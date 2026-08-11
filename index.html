@@ -1,1 +1,229 @@
+```html
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <title>SFM Web</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Top Toolbar -->
+    <header class="topbar">
+
+        <div class="brand">
+            SFM <span>WEB</span>
+        </div>
+
+        <button id="newScene">
+            New
+        </button>
+
+        <button id="saveScene">
+            Save to Puter
+        </button>
+
+        <button id="loadScene">
+            Load from Puter
+        </button>
+
+        <label class="upload">
+            Import Model
+            <input
+                id="modelInput"
+                type="file"
+                accept=".glb,.gltf"
+            >
+        </label>
+
+        <div class="spacer"></div>
+
+        <button id="aiButton">
+            AI Assistant
+        </button>
+
+    </header>
+
+
+    <!-- Main Editor -->
+    <main class="layout">
+
+        <!-- Scene / Tools Panel -->
+        <aside class="panel left">
+
+            <div class="panel-title">
+                SEQUENCE
+            </div>
+
+            <div id="outliner">
+                <!-- Objects appear here -->
+            </div>
+
+
+            <div class="panel-title">
+                TOOLS
+            </div>
+
+            <div class="tool-grid">
+
+                <button data-tool="translate">
+                    Move
+                </button>
+
+                <button data-tool="rotate">
+                    Rotate
+                </button>
+
+                <button data-tool="scale">
+                    Scale
+                </button>
+
+            </div>
+
+
+            <button id="addCube" class="wide">
+                + Add Cube
+            </button>
+
+            <button id="addLight" class="wide">
+                + Add Light
+            </button>
+
+        </aside>
+
+
+        <!-- 3D Viewport -->
+        <section class="center">
+
+            <div id="viewport">
+                <!-- Three.js renders here -->
+            </div>
+
+            <div class="hud">
+
+                <span id="status">
+                    Ready
+                </span>
+
+                <span>
+                    WASD: camera • Drag: orbit • Wheel: zoom
+                </span>
+
+            </div>
+
+        </section>
+
+
+        <!-- Properties / AI Panel -->
+        <aside class="panel right">
+
+            <div class="panel-title">
+                PROPERTIES
+            </div>
+
+            <div id="properties">
+
+                <div class="empty">
+                    Select an object.
+                </div>
+
+            </div>
+
+
+            <div class="panel-title">
+                AI ASSISTANT
+            </div>
+
+            <textarea
+                id="aiPrompt"
+                placeholder="Ask the SFM assistant..."
+            ></textarea>
+
+            <button id="askAI" class="wide">
+                Ask AI
+            </button>
+
+            <pre id="aiOutput"></pre>
+
+        </aside>
+
+    </main>
+
+
+    <!-- Animation Timeline -->
+    <footer class="timeline">
+
+        <div class="transport">
+
+            <button id="play">
+                ▶
+            </button>
+
+            <button id="stop">
+                ■
+            </button>
+
+            <span id="timeLabel">
+                0.0s
+            </span>
+
+        </div>
+
+
+        <div class="track">
+
+            <div class="ruler">
+
+                <span>0s</span>
+                <span>1s</span>
+                <span>2s</span>
+                <span>3s</span>
+                <span>4s</span>
+                <span>5s</span>
+                <span>6s</span>
+                <span>7s</span>
+                <span>8s</span>
+                <span>9s</span>
+                <span>10s</span>
+
+            </div>
+
+            <input
+                id="timeline"
+                type="range"
+                min="0"
+                max="10"
+                step="0.01"
+                value="0"
+            >
+
+        </div>
+
+    </footer>
+
+
+    <!-- Puter.js -->
+    <script src="https://js.puter.com/v2/"></script>
+
+
+    <!-- Main SFM Web application -->
+    <script type="module" src="app.js"></script>
+
+</body>
+</html>
+```
+
+This expects these files beside it:
+
+```text
+SFM-Web/
+├── index.html
+├── style.css
+└── app.js
+```
+
+The **Puter.js line is already included**, so the AI and cloud-save functionality can be connected from `app.js`.
