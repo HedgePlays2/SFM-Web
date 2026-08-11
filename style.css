@@ -1,1 +1,576 @@
+```css
+/* =========================================
+   SFM WEB - MAIN UI
+   ========================================= */
 
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+
+    background: #15171b;
+    color: #e7eaf0;
+
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Arial,
+        sans-serif;
+}
+
+
+/* =========================================
+   BUTTONS
+   ========================================= */
+
+button,
+.upload {
+    background: #252932;
+
+    border: 1px solid #3b414c;
+    border-radius: 4px;
+
+    color: #e8ebf0;
+
+    padding: 7px 10px;
+
+    cursor: pointer;
+
+    font: inherit;
+
+    transition:
+        background 0.12s ease,
+        border-color 0.12s ease;
+}
+
+button:hover,
+.upload:hover {
+    background: #303641;
+    border-color: #555d6b;
+}
+
+button:active {
+    background: #181b20;
+}
+
+
+/* =========================================
+   TOP BAR
+   ========================================= */
+
+.topbar {
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 7px 10px;
+
+    background: #20232a;
+
+    border-bottom: 1px solid #090a0c;
+
+    user-select: none;
+}
+
+
+.brand {
+    font-size: 17px;
+
+    font-weight: 800;
+
+    letter-spacing: 1px;
+
+    margin-right: 8px;
+}
+
+
+.brand span {
+    color: #8d96a5;
+
+    font-weight: 500;
+}
+
+
+.spacer {
+    flex: 1;
+}
+
+
+/* =========================================
+   MODEL UPLOAD
+   ========================================= */
+
+.upload {
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+}
+
+.upload input {
+    display: none;
+}
+
+
+/* =========================================
+   MAIN LAYOUT
+   ========================================= */
+
+.layout {
+    height: calc(100vh - 148px);
+
+    display: grid;
+
+    grid-template-columns:
+        220px
+        minmax(400px, 1fr)
+        260px;
+}
+
+
+/* =========================================
+   SIDE PANELS
+   ========================================= */
+
+.panel {
+    background: #1d2026;
+
+    border-right: 1px solid #0d0e10;
+
+    overflow-y: auto;
+
+    overflow-x: hidden;
+}
+
+
+.panel.right {
+    border-right: none;
+
+    border-left: 1px solid #0d0e10;
+}
+
+
+/* =========================================
+   PANEL TITLES
+   ========================================= */
+
+.panel-title {
+    padding: 12px 11px 7px;
+
+    border-bottom: 1px solid #30343c;
+
+    color: #929aa8;
+
+    font-size: 11px;
+
+    font-weight: 800;
+
+    letter-spacing: 1.2px;
+}
+
+
+/* =========================================
+   SCENE OUTLINER
+   ========================================= */
+
+#outliner {
+    padding: 6px;
+}
+
+
+.tree-item {
+    padding: 7px 8px;
+
+    border-radius: 3px;
+
+    cursor: pointer;
+
+    font-size: 13px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+}
+
+
+.tree-item:hover {
+    background: #2a2f38;
+}
+
+
+.tree-item.selected {
+    background: #343a45;
+
+    color: white;
+}
+
+
+/* =========================================
+   TOOLS
+   ========================================= */
+
+.tool-grid {
+    display: grid;
+
+    grid-template-columns:
+        1fr
+        1fr
+        1fr;
+
+    gap: 5px;
+
+    padding: 8px;
+}
+
+
+.tool-grid button {
+    font-size: 11px;
+
+    padding:
+        6px
+        2px;
+}
+
+
+.wide {
+    width: calc(100% - 16px);
+
+    margin:
+        4px 8px;
+}
+
+
+/* =========================================
+   3D VIEWPORT
+   ========================================= */
+
+.center {
+    position: relative;
+
+    min-width: 0;
+
+    min-height: 0;
+
+    background: #111318;
+}
+
+
+#viewport {
+    position: absolute;
+
+    inset: 0;
+
+    overflow: hidden;
+}
+
+
+#viewport canvas {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+}
+
+
+/* =========================================
+   VIEWPORT HUD
+   ========================================= */
+
+.hud {
+    position: absolute;
+
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    pointer-events: none;
+
+    font-size: 11px;
+
+    color: #aeb5c0;
+
+    text-shadow:
+        0 1px 2px #000;
+}
+
+
+/* =========================================
+   PROPERTIES
+   ========================================= */
+
+#properties {
+    padding: 8px;
+}
+
+
+.empty {
+    color: #777f8c;
+
+    font-size: 12px;
+
+    padding: 10px;
+}
+
+
+.prop {
+    margin-bottom: 10px;
+}
+
+
+.prop label {
+    display: block;
+
+    margin-bottom: 4px;
+
+    color: #9ba3af;
+
+    font-size: 11px;
+}
+
+
+.prop input {
+    width: 100%;
+
+    margin-bottom: 3px;
+
+    padding: 6px;
+
+    background: #111318;
+
+    border: 1px solid #363b45;
+
+    border-radius: 3px;
+
+    color: #eee;
+
+    outline: none;
+}
+
+
+.prop input:focus {
+    border-color: #687386;
+}
+
+
+/* =========================================
+   AI PANEL
+   ========================================= */
+
+#aiPrompt {
+    width: calc(100% - 16px);
+
+    height: 90px;
+
+    margin: 8px;
+
+    padding: 8px;
+
+    resize: vertical;
+
+    background: #111318;
+
+    border: 1px solid #363b45;
+
+    border-radius: 4px;
+
+    color: #eee;
+
+    font-family: monospace;
+
+    font-size: 12px;
+
+    outline: none;
+}
+
+
+#aiPrompt:focus {
+    border-color: #687386;
+}
+
+
+#aiOutput {
+    margin: 8px;
+
+    max-height: 180px;
+
+    overflow-y: auto;
+
+    white-space: pre-wrap;
+
+    color: #b8c0cd;
+
+    font-family: monospace;
+
+    font-size: 11px;
+}
+
+
+/* =========================================
+   TIMELINE
+   ========================================= */
+
+.timeline {
+    height: 100px;
+
+    display: flex;
+
+    gap: 12px;
+
+    padding: 10px;
+
+    background: #1b1e24;
+
+    border-top: 1px solid #0a0b0d;
+}
+
+
+/* =========================================
+   TRANSPORT CONTROLS
+   ========================================= */
+
+.transport {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 6px;
+}
+
+
+.transport button {
+    width: 34px;
+
+    height: 30px;
+
+    padding: 0;
+}
+
+
+.transport span {
+    padding:
+        8px
+        3px;
+
+    color: #b4bbc6;
+
+    font-family: monospace;
+
+    font-size: 12px;
+}
+
+
+/* =========================================
+   TIMELINE TRACK
+   ========================================= */
+
+.track {
+    flex: 1;
+
+    min-width: 0;
+}
+
+
+.ruler {
+    display: flex;
+
+    justify-content: space-between;
+
+    margin:
+        0
+        5px
+        8px;
+
+    color: #777f8c;
+
+    font-family: monospace;
+
+    font-size: 10px;
+}
+
+
+.track input {
+    width: 100%;
+
+    cursor: pointer;
+}
+
+
+/* =========================================
+   SCROLLBARS
+   ========================================= */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+
+::-webkit-scrollbar-track {
+    background: #15171b;
+}
+
+
+::-webkit-scrollbar-thumb {
+    background: #3a404b;
+
+    border-radius: 4px;
+}
+
+
+::-webkit-scrollbar-thumb:hover {
+    background: #4b5361;
+}
+
+
+/* =========================================
+   RESPONSIVE MODE
+   ========================================= */
+
+@media (max-width: 900px) {
+
+    .layout {
+        grid-template-columns:
+            180px
+            minmax(300px, 1fr)
+            220px;
+    }
+
+    .topbar {
+        overflow-x: auto;
+    }
+
+}
+
+
+@media (max-width: 700px) {
+
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .panel.left,
+    .panel.right {
+        display: none;
+    }
+
+}
+```
