@@ -8,32 +8,48 @@ import { SceneManager } from "./editor/scene.js";
 import { CameraManager } from "./editor/camera.js";
 import { SelectionManager } from "./editor/selection.js";
 import { GizmoManager } from "./editor/gizmos.js";
+import { PropertiesManager } from "./editor/properties.js";
 
 
 /* =========================================================
    DOM
    ========================================================= */
 
-const viewport = document.querySelector("#viewport");
-const status = document.querySelector("#status");
-const outliner = document.querySelector("#outliner");
-const properties = document.querySelector("#properties");
+const viewport =
+    document.querySelector("#viewport");
 
-const timeline = document.querySelector("#timeline");
-const timeLabel = document.querySelector("#timeLabel");
+const status =
+    document.querySelector("#status");
 
-const aiPrompt = document.querySelector("#aiPrompt");
-const aiOutput = document.querySelector("#aiOutput");
+const outliner =
+    document.querySelector("#outliner");
+
+const properties =
+    document.querySelector("#properties");
+
+const timeline =
+    document.querySelector("#timeline");
+
+const timeLabel =
+    document.querySelector("#timeLabel");
+
+const aiPrompt =
+    document.querySelector("#aiPrompt");
+
+const aiOutput =
+    document.querySelector("#aiOutput");
 
 
 /* =========================================================
-   CHECK VIEWPORT
+   SAFETY CHECK
    ========================================================= */
 
 if (!viewport) {
+
     throw new Error(
-        "SFM-Web: #viewport was not found in index.html"
+        "SFM-Web: #viewport was not found."
     );
+
 }
 
 
@@ -42,7 +58,9 @@ if (!viewport) {
    ========================================================= */
 
 const sceneManager =
-    new SceneManager(viewport);
+    new SceneManager(
+        viewport
+    );
 
 const scene =
     sceneManager.scene;
@@ -77,44 +95,43 @@ const gizmoManager =
     );
 
 
+const propertiesManager =
+    new PropertiesManager(
+        properties,
+        selectionManager,
+        cameraManager,
+        sceneManager
+    );
+
+
 /* =========================================================
    STATE
    ========================================================= */
 
-let currentTool = "translate";
-let playing = false;
-let currentTime = 0;
+let currentTool =
+    "translate";
+
+let playing =
+    false;
+
+let currentTime =
+    0;
 
 
 /* =========================================================
-   SELECTION
+   STATUS
    ========================================================= */
 
-selectionManager.onSelectionChanged(
-    object => {
+function setStatus(
+    message
+) {
 
-        refreshOutliner();
-        renderProperties();
+    if (status) {
 
-        if (object) {
-
-            status.textContent =
-                `Selected: ${object.name}`;
-
-        } else {
-
-            status.textContent =
-                "Nothing selected";
-
-        }
+        status.textContent =
+            message;
 
     }
-);
-
-
-function getSelected() {
-
-    return selectionManager.getSelected();
 
 }
 
@@ -128,7 +145,10 @@ function refreshOutliner() {
     if (!outliner)
         return;
 
-    outliner.innerHTML = "";
+
+    outliner.innerHTML =
+        "";
+
 
     for (
         const object
@@ -136,7 +156,10 @@ function refreshOutliner() {
     ) {
 
         const item =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
+
 
         item.className =
             "tree-item";
@@ -174,399 +197,54 @@ function refreshOutliner() {
         outliner.appendChild(
             item
         );
+
     }
+
 }
 
 
 /* =========================================================
-   PROPERTIES
+   SELECTION UPDATES
    ========================================================= */
 
-function renderProperties() {
+selectionManager.onSelectionChanged(
+    object => {
 
-    if (!properties)
-        return;
+        refreshOutliner();
 
-
-    const selected =
-        getSelected();
+        propertiesManager.refresh();
 
 
-    if (!selected) {
+        if (object) {
 
-        properties.innerHTML =
-            `<div class="empty">
-                Select an object.
-            </div>`;
-
-        return;
-    }
-
-
-    properties.innerHTML = `
-
-        <div class="prop">
-
-            <label>Name</label>
-
-            <input
-                id="propName"
-                value="${escapeHTML(selected.name)}"
-            >
-
-        </div>
-
-
-        <div class="prop">
-
-            <label>Position</label>
-
-            <div class="vector-input">
-
-                <input
-                    id="posX"
-                    value="${selected.position.x.toFixed(2)}"
-                >
-
-                <input
-                    id="posY"
-                    value="${selected.position.y.toFixed(2)}"
-                >
-
-                <input
-                    id="posZ"
-                    value="${selected.position.z.toFixed(2)}"
-                >
-
-            </div>
-
-        </div>
-
-
-        <div class="prop">
-
-            <label>Rotation</label>
-
-            <div class="vector-input">
-
-                <input
-                    id="rotX"
-                    value="${THREE.MathUtils.radToDeg(
-                        selected.rotation.x
-                    ).toFixed(1)}"
-                >
-
-                <input
-                    id="rotY"
-                    value="${THREE.MathUtils.radToDeg(
-                        selected.rotation.y
-                    ).toFixed(1)}"
-                >
-
-                <input
-                    id="rotZ"
-                    value="${THREE.MathUtils.radToDeg(
-                        selected.rotation.z
-                    ).toFixed(1)}"
-                >
-
-            </div>
-
-        </div>
-
-
-        <div class="prop">
-
-            <label>Scale</label>
-
-            <div class="vector-input">
-
-                <input
-                    id="scaleX"
-                    value="${selected.scale.x.toFixed(2)}"
-                >
-
-                <input
-                    id="scaleY"
-                    value="${selected.scale.y.toFixed(2)}"
-                >
-
-                <input
-                    id="scaleZ"
-                    value="${selected.scale.z.toFixed(2)}"
-                >
-
-            </div>
-
-        </div>
-
-
-        <button
-            id="focusObject"
-            class="wide"
-        >
-            Focus Camera
-        </button>
-
-
-        <button
-            id="deleteObject"
-            class="wide"
-        >
-            Delete Object
-        </button>
-
-    `;
-
-
-    /* Position */
-
-    bindNumber(
-        "#posX",
-        value => {
-            selected.position.x = value;
-        }
-    );
-
-    bindNumber(
-        "#posY",
-        value => {
-            selected.position.y = value;
-        }
-    );
-
-    bindNumber(
-        "#posZ",
-        value => {
-            selected.position.z = value;
-        }
-    );
-
-
-    /* Rotation */
-
-    bindNumber(
-        "#rotX",
-        value => {
-
-            selected.rotation.x =
-                THREE.MathUtils.degToRad(
-                    value
-                );
+            setStatus(
+                `Selected: ${object.name}`
+            );
 
         }
-    );
+        else {
 
-    bindNumber(
-        "#rotY",
-        value => {
-
-            selected.rotation.y =
-                THREE.MathUtils.degToRad(
-                    value
-                );
+            setStatus(
+                "Nothing selected"
+            );
 
         }
-    );
-
-    bindNumber(
-        "#rotZ",
-        value => {
-
-            selected.rotation.z =
-                THREE.MathUtils.degToRad(
-                    value
-                );
-
-        }
-    );
-
-
-    /* Scale */
-
-    bindNumber(
-        "#scaleX",
-        value => {
-            selected.scale.x = value;
-        }
-    );
-
-    bindNumber(
-        "#scaleY",
-        value => {
-            selected.scale.y = value;
-        }
-    );
-
-    bindNumber(
-        "#scaleZ",
-        value => {
-            selected.scale.z = value;
-        }
-    );
-
-
-    /* Name */
-
-    const nameInput =
-        document.querySelector(
-            "#propName"
-        );
-
-    if (nameInput) {
-
-        nameInput.addEventListener(
-            "change",
-            event => {
-
-                selected.name =
-                    event.target.value ||
-                    "Object";
-
-                refreshOutliner();
-
-            }
-        );
-    }
-
-
-    /* Focus */
-
-    const focusButton =
-        document.querySelector(
-            "#focusObject"
-        );
-
-    if (focusButton) {
-
-        focusButton.onclick =
-            () => {
-
-                cameraManager.focusObject(
-                    selected
-                );
-
-            };
-    }
-
-
-    /* Delete */
-
-    const deleteButton =
-        document.querySelector(
-            "#deleteObject"
-        );
-
-    if (deleteButton) {
-
-        deleteButton.onclick =
-            deleteSelectedObject;
 
     }
-}
+);
 
 
 /* =========================================================
-   NUMBER INPUT
+   GIZMO
    ========================================================= */
 
-function bindNumber(
-    selector,
-    callback
-) {
+gizmoManager.setObjectChangedCallback(
+    () => {
 
-    const element =
-        document.querySelector(
-            selector
-        );
+        propertiesManager.refresh();
 
-    if (!element)
-        return;
-
-
-    element.addEventListener(
-        "change",
-        () => {
-
-            const value =
-                Number(
-                    element.value
-                );
-
-
-            if (
-                Number.isFinite(
-                    value
-                )
-            ) {
-
-                callback(
-                    value
-                );
-
-            }
-
-        }
-    );
-}
-
-
-/* =========================================================
-   DELETE OBJECT
-   ========================================================= */
-
-function deleteSelectedObject() {
-
-    const selected =
-        getSelected();
-
-
-    if (!selected)
-        return;
-
-
-    sceneManager.removeObject(
-        selected
-    );
-
-
-    selectionManager.clear();
-
-
-    status.textContent =
-        "Object deleted";
-}
-
-
-/* =========================================================
-   HTML ESCAPE
-   ========================================================= */
-
-function escapeHTML(
-    value
-) {
-
-    return String(value).replace(
-        /[&<>"']/g,
-        character => {
-
-            const entities = {
-
-                "&": "&amp;",
-                "<": "&lt;",
-                ">": "&gt;",
-                '"': "&quot;",
-                "'": "&#39;"
-
-            };
-
-            return entities[
-                character
-            ];
-
-        }
-    );
-}
+    }
+);
 
 
 /* =========================================================
@@ -581,7 +259,8 @@ const addCube =
 
 if (addCube) {
 
-    addCube.onclick =
+    addCube.addEventListener(
+        "click",
         () => {
 
             const cube =
@@ -595,10 +274,13 @@ if (addCube) {
             );
 
 
-            status.textContent =
-                "Cube added";
+            setStatus(
+                "Cube added"
+            );
 
-        };
+        }
+    );
+
 }
 
 
@@ -614,7 +296,8 @@ const addLight =
 
 if (addLight) {
 
-    addLight.onclick =
+    addLight.addEventListener(
+        "click",
         () => {
 
             const light =
@@ -628,15 +311,18 @@ if (addLight) {
             );
 
 
-            status.textContent =
-                "Light added";
+            setStatus(
+                "Light added"
+            );
 
-        };
+        }
+    );
+
 }
 
 
 /* =========================================================
-   GIZMO TOOLS
+   TRANSFORM TOOLS
    ========================================================= */
 
 document
@@ -674,8 +360,9 @@ document
                     );
 
 
-                    status.textContent =
-                        `Tool: ${tool}`;
+                    setStatus(
+                        `Tool: ${tool}`
+                    );
 
                 }
             );
@@ -685,7 +372,7 @@ document
 
 
 /* =========================================================
-   KEYBOARD GIZMO SHORTCUTS
+   KEYBOARD SHORTCUTS
    ========================================================= */
 
 window.addEventListener(
@@ -693,19 +380,22 @@ window.addEventListener(
     event => {
 
         if (
-            event.target.tagName ===
-                "INPUT" ||
-            event.target.tagName ===
-                "TEXTAREA"
+            event.target instanceof
+                HTMLInputElement ||
+            event.target instanceof
+                HTMLTextAreaElement
         ) {
 
             return;
+
         }
 
 
         const key =
             event.key.toLowerCase();
 
+
+        /* Move */
 
         if (key === "w") {
 
@@ -716,13 +406,16 @@ window.addEventListener(
                 "translate"
             );
 
-            status.textContent =
-                "Tool: translate";
+            setStatus(
+                "Tool: translate"
+            );
 
         }
 
 
-        if (key === "e") {
+        /* Rotate */
+
+        else if (key === "e") {
 
             currentTool =
                 "rotate";
@@ -731,13 +424,16 @@ window.addEventListener(
                 "rotate"
             );
 
-            status.textContent =
-                "Tool: rotate";
+            setStatus(
+                "Tool: rotate"
+            );
 
         }
 
 
-        if (key === "r") {
+        /* Scale */
+
+        else if (key === "r") {
 
             currentTool =
                 "scale";
@@ -746,16 +442,19 @@ window.addEventListener(
                 "scale"
             );
 
-            status.textContent =
-                "Tool: scale";
+            setStatus(
+                "Tool: scale"
+            );
 
         }
 
 
-        if (key === "f") {
+        /* Focus */
+
+        else if (key === "f") {
 
             const selected =
-                getSelected();
+                selectionManager.getSelected();
 
 
             if (selected) {
@@ -764,8 +463,39 @@ window.addEventListener(
                     selected
                 );
 
-                status.textContent =
-                    "Camera focused";
+                setStatus(
+                    "Camera focused"
+                );
+
+            }
+
+        }
+
+
+        /* Delete */
+
+        else if (
+            event.key === "Delete" ||
+            event.key === "Backspace"
+        ) {
+
+            const selected =
+                selectionManager.getSelected();
+
+
+            if (selected) {
+
+                sceneManager.removeObject(
+                    selected
+                );
+
+
+                selectionManager.clear();
+
+
+                setStatus(
+                    "Object deleted"
+                );
 
             }
 
@@ -787,7 +517,8 @@ const newScene =
 
 if (newScene) {
 
-    newScene.onclick =
+    newScene.addEventListener(
+        "click",
         () => {
 
             sceneManager.clearObjects();
@@ -796,15 +527,18 @@ if (newScene) {
 
             cameraManager.reset();
 
-            currentTime = 0;
 
-            playing = false;
+            currentTime =
+                0;
+
+            playing =
+                false;
 
 
             if (timeline) {
 
                 timeline.value =
-                    0;
+                    "0";
 
             }
 
@@ -819,13 +553,16 @@ if (newScene) {
 
             refreshOutliner();
 
-            renderProperties();
+            propertiesManager.refresh();
 
 
-            status.textContent =
-                "New scene";
+            setStatus(
+                "New scene"
+            );
 
-        };
+        }
+    );
+
 }
 
 
@@ -846,7 +583,7 @@ if (modelInput) {
         event => {
 
             const file =
-                event.target.files[0];
+                event.target.files?.[0];
 
 
             if (!file)
@@ -863,8 +600,9 @@ if (modelInput) {
                 new GLTFLoader();
 
 
-            status.textContent =
-                `Loading ${file.name}...`;
+            setStatus(
+                `Loading ${file.name}...`
+            );
 
 
             loader.load(
@@ -921,13 +659,17 @@ if (modelInput) {
                     );
 
 
-                    status.textContent =
-                        `Imported ${file.name}`;
+                    setStatus(
+                        `Imported ${file.name}`
+                    );
 
 
                     URL.revokeObjectURL(
                         url
                     );
+
+                    modelInput.value =
+                        "";
 
                 },
 
@@ -936,17 +678,22 @@ if (modelInput) {
                 error => {
 
                     console.error(
+                        "Model import error:",
                         error
                     );
 
 
-                    status.textContent =
-                        "Model import failed";
+                    setStatus(
+                        "Model import failed"
+                    );
 
 
                     URL.revokeObjectURL(
                         url
                     );
+
+                    modelInput.value =
+                        "";
 
                 }
 
@@ -954,6 +701,7 @@ if (modelInput) {
 
         }
     );
+
 }
 
 
@@ -983,6 +731,7 @@ if (timeline) {
 
         }
     );
+
 }
 
 
@@ -998,15 +747,50 @@ const play =
 
 if (play) {
 
-    play.onclick =
+    play.addEventListener(
+        "click",
         () => {
 
-            playing = true;
+            playing =
+                true;
 
-            status.textContent =
-                "Playing";
 
-        };
+            setStatus(
+                "Playing"
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   PAUSE
+   ========================================================= */
+
+const pause =
+    document.querySelector(
+        "#pause"
+    );
+
+
+if (pause) {
+
+    pause.addEventListener(
+        "click",
+        () => {
+
+            playing =
+                false;
+
+
+            setStatus(
+                "Paused"
+            );
+
+        }
+    );
 
 }
 
@@ -1023,18 +807,21 @@ const stop =
 
 if (stop) {
 
-    stop.onclick =
+    stop.addEventListener(
+        "click",
         () => {
 
-            playing = false;
+            playing =
+                false;
 
-            currentTime = 0;
+            currentTime =
+                0;
 
 
             if (timeline) {
 
                 timeline.value =
-                    0;
+                    "0";
 
             }
 
@@ -1047,10 +834,12 @@ if (stop) {
             }
 
 
-            status.textContent =
-                "Stopped";
+            setStatus(
+                "Stopped"
+            );
 
-        };
+        }
+    );
 
 }
 
@@ -1067,13 +856,26 @@ const saveScene =
 
 if (saveScene) {
 
-    saveScene.onclick =
+    saveScene.addEventListener(
+        "click",
         async () => {
 
             try {
 
                 const data =
                     serializeScene();
+
+
+                if (
+                    typeof puter ===
+                    "undefined"
+                ) {
+
+                    throw new Error(
+                        "Puter.js is not loaded."
+                    );
+
+                }
 
 
                 await puter.fs.write(
@@ -1086,8 +888,9 @@ if (saveScene) {
                 );
 
 
-                status.textContent =
-                    "Saved to Puter";
+                setStatus(
+                    "Scene saved"
+                );
 
             }
             catch (error) {
@@ -1097,12 +900,14 @@ if (saveScene) {
                 );
 
 
-                status.textContent =
-                    "Save failed";
+                setStatus(
+                    "Save failed"
+                );
 
             }
 
-        };
+        }
+    );
 
 }
 
@@ -1119,10 +924,23 @@ const loadScene =
 
 if (loadScene) {
 
-    loadScene.onclick =
+    loadScene.addEventListener(
+        "click",
         async () => {
 
             try {
+
+                if (
+                    typeof puter ===
+                    "undefined"
+                ) {
+
+                    throw new Error(
+                        "Puter.js is not loaded."
+                    );
+
+                }
+
 
                 const file =
                     await puter.fs.read(
@@ -1145,8 +963,9 @@ if (loadScene) {
                 );
 
 
-                status.textContent =
-                    "Loaded from Puter";
+                setStatus(
+                    "Scene loaded"
+                );
 
             }
             catch (error) {
@@ -1156,28 +975,36 @@ if (loadScene) {
                 );
 
 
-                status.textContent =
-                    "Could not load project";
+                setStatus(
+                    "Load failed"
+                );
 
             }
 
-        };
+        }
+    );
 
 }
 
 
 /* =========================================================
-   SERIALIZE
+   SERIALIZE SCENE
    ========================================================= */
 
 function serializeScene() {
 
     return {
 
-        version: 2,
+        version:
+            3,
+
 
         camera:
-            cameraManager.serialize(),
+            typeof cameraManager.serialize ===
+                "function"
+                ? cameraManager.serialize()
+                : null,
+
 
         objects:
             sceneManager.objects.map(
@@ -1207,11 +1034,12 @@ function serializeScene() {
             )
 
     };
+
 }
 
 
 /* =========================================================
-   RESTORE
+   RESTORE SCENE
    ========================================================= */
 
 function restoreScene(
@@ -1223,7 +1051,12 @@ function restoreScene(
     selectionManager.clear();
 
 
-    if (data.camera) {
+    if (
+        data &&
+        data.camera &&
+        typeof cameraManager.restore ===
+            "function"
+    ) {
 
         cameraManager.restore(
             data.camera
@@ -1234,58 +1067,63 @@ function restoreScene(
 
     for (
         const objectData
-        of data.objects || []
+        of data?.objects || []
     ) {
 
         if (
-            objectData.type ===
+            objectData.type !==
             "Mesh"
         ) {
 
-            const object =
-                sceneManager.createCube(
-                    objectData.name ||
-                    "Cube"
-                );
+            continue;
+
+        }
 
 
-            if (
-                Array.isArray(
-                    objectData.position
-                )
-            ) {
-
-                object.position.fromArray(
-                    objectData.position
-                );
-
-            }
+        const object =
+            sceneManager.createCube(
+                objectData.name ||
+                "Cube"
+            );
 
 
-            if (
-                Array.isArray(
-                    objectData.rotation
-                )
-            ) {
+        if (
+            Array.isArray(
+                objectData.position
+            )
+        ) {
 
-                object.rotation.fromArray(
-                    objectData.rotation
-                );
+            object.position.fromArray(
+                objectData.position
+            );
 
-            }
+        }
 
 
-            if (
-                Array.isArray(
-                    objectData.scale
-                )
-            ) {
+        if (
+            Array.isArray(
+                objectData.rotation
+            )
+        ) {
 
-                object.scale.fromArray(
-                    objectData.scale
-                );
+            object.rotation.set(
+                objectData.rotation[0] || 0,
+                objectData.rotation[1] || 0,
+                objectData.rotation[2] || 0
+            );
 
-            }
+        }
+
+
+        if (
+            Array.isArray(
+                objectData.scale
+            )
+        ) {
+
+            object.scale.fromArray(
+                objectData.scale
+            );
 
         }
 
@@ -1294,7 +1132,8 @@ function restoreScene(
 
     refreshOutliner();
 
-    renderProperties();
+    propertiesManager.refresh();
+
 }
 
 
@@ -1314,7 +1153,8 @@ if (
     aiOutput
 ) {
 
-    askAI.onclick =
+    askAI.addEventListener(
+        "click",
         async () => {
 
             const prompt =
@@ -1325,6 +1165,19 @@ if (
                 return;
 
 
+            if (
+                typeof puter ===
+                "undefined"
+            ) {
+
+                aiOutput.textContent =
+                    "Puter.js is not loaded.";
+
+                return;
+
+            }
+
+
             aiOutput.textContent =
                 "Thinking...";
 
@@ -1333,37 +1186,45 @@ if (
 
                 const response =
                     await puter.ai.chat(
-
-                        `You are the AI assistant
-inside SFM-Web, a browser-based
-Source Filmmaker-style editor.
-
-Help with:
-
-- filmmaking
-- camera composition
-- lighting
-- posing
-- animation
-- scene setup
-- troubleshooting
-
-User request:
-
-${prompt}`,
-
-                        {
-                            model:
-                                "gpt-5.4-nano"
-                        }
-
+                        prompt
                     );
 
 
-                aiOutput.textContent =
-                    response?.message?.content ??
-                    response?.text ??
-                    String(response);
+                if (
+                    typeof response ===
+                    "string"
+                ) {
+
+                    aiOutput.textContent =
+                        response;
+
+                }
+                else if (
+                    response?.message?.content
+                ) {
+
+                    aiOutput.textContent =
+                        response.message.content;
+
+                }
+                else if (
+                    response?.text
+                ) {
+
+                    aiOutput.textContent =
+                        response.text;
+
+                }
+                else {
+
+                    aiOutput.textContent =
+                        JSON.stringify(
+                            response,
+                            null,
+                            2
+                        );
+
+                }
 
             }
             catch (error) {
@@ -1379,7 +1240,8 @@ ${prompt}`,
 
             }
 
-        };
+        }
+    );
 
 }
 
@@ -1396,7 +1258,8 @@ const aiButton =
 
 if (aiButton) {
 
-    aiButton.onclick =
+    aiButton.addEventListener(
+        "click",
         () => {
 
             if (aiPrompt) {
@@ -1405,26 +1268,10 @@ if (aiButton) {
 
             }
 
-        };
+        }
+    );
 
 }
-
-
-/* =========================================================
-   GIZMO CHANGE CALLBACK
-   ========================================================= */
-
-gizmoManager.setObjectChangedCallback(
-    object => {
-
-        if (!object)
-            return;
-
-
-        renderProperties();
-
-    }
-);
 
 
 /* =========================================================
@@ -1470,7 +1317,8 @@ function animate(
             duration
         ) {
 
-            currentTime = 0;
+            currentTime =
+                0;
 
         }
 
@@ -1478,7 +1326,9 @@ function animate(
         if (timeline) {
 
             timeline.value =
-                currentTime;
+                String(
+                    currentTime
+                );
 
         }
 
@@ -1502,7 +1352,7 @@ function animate(
 
 
 /* =========================================================
-   START
+   STARTUP
    ========================================================= */
 
 const firstCube =
@@ -1511,13 +1361,26 @@ const firstCube =
     );
 
 
+firstCube.position.set(
+    0,
+    0.5,
+    0
+);
+
+
 selectionManager.select(
     firstCube
 );
 
 
-status.textContent =
-    "SFM-Web ready";
+refreshOutliner();
+
+propertiesManager.refresh();
+
+
+setStatus(
+    "SFM-Web ready"
+);
 
 
 animate(
