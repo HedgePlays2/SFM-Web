@@ -1,164 +1,470 @@
 // editor/scene.js
-// SFM-Web scene manager
+// SFM-Web Scene Manager
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
+
 export class SceneManager {
-    constructor(viewport) {
-        this.viewport = viewport;
-        this.objects = [];
 
-        // -----------------------------------------
-        // Scene
-        // -----------------------------------------
+    constructor(
+        viewport
+    ) {
 
-        this.scene = new THREE.Scene();
+        this.viewport =
+            viewport;
+
+        this.objects =
+            [];
+
+        this.scene =
+            new THREE.Scene();
+
+
+        // =================================================
+        // Scene appearance
+        // =================================================
 
         this.scene.background =
-            new THREE.Color(0x101218);
-
-        // -----------------------------------------
-        // Camera
-        // -----------------------------------------
-
-        this.camera =
-            new THREE.PerspectiveCamera(
-                55,
-                1,
-                0.1,
-                1000
+            new THREE.Color(
+                0x111315
             );
 
-        this.camera.position.set(
-            6,
-            4,
-            8
-        );
 
-        // -----------------------------------------
+        // =================================================
         // Renderer
-        // -----------------------------------------
+        // =================================================
 
         this.renderer =
             new THREE.WebGLRenderer({
+
                 antialias: true
+
             });
+
 
         this.renderer.setPixelRatio(
             Math.min(
-                window.devicePixelRatio,
+                window.devicePixelRatio || 1,
                 2
             )
         );
 
-        this.renderer.shadowMap.enabled = true;
 
-        this.viewport.appendChild(
+        this.renderer.setSize(
+            viewport.clientWidth,
+            viewport.clientHeight
+        );
+
+
+        this.renderer.shadowMap.enabled =
+            true;
+
+
+        this.renderer.shadowMap.type =
+            THREE.PCFSoftShadowMap;
+
+
+        viewport.appendChild(
             this.renderer.domElement
         );
 
-        // -----------------------------------------
+
+        // =================================================
+        // Camera
+        // =================================================
+
+        this.camera =
+            new THREE.PerspectiveCamera(
+
+                60,
+
+                viewport.clientWidth /
+                Math.max(
+                    viewport.clientHeight,
+                    1
+                ),
+
+                0.1,
+
+                5000
+
+            );
+
+
+        this.camera.position.set(
+            8,
+            6,
+            10
+        );
+
+
+        this.camera.lookAt(
+            0,
+            0,
+            0
+        );
+
+
+        // =================================================
         // Lighting
-        // -----------------------------------------
+        // =================================================
 
-        this.setupLighting();
+        this.createDefaultLights();
 
-        // -----------------------------------------
-        // Editor grid
-        // -----------------------------------------
+
+        // =================================================
+        // Grid
+        // =================================================
 
         this.grid =
             new THREE.GridHelper(
-                30,
-                30,
-                0x4b515c,
-                0x292d35
+                100,
+                100
             );
+
 
         this.scene.add(
             this.grid
         );
 
-        // -----------------------------------------
-        // Resize
-        // -----------------------------------------
 
-        this.resize();
+        // =================================================
+        // Axis helper
+        // =================================================
+
+        this.axes =
+            new THREE.AxesHelper(
+                5
+            );
+
+
+        this.scene.add(
+            this.axes
+        );
+
+
+        // =================================================
+        // Resize
+        // =================================================
 
         this.resizeObserver =
             new ResizeObserver(
-                () => this.resize()
+                () => {
+
+                    this.resize();
+
+                }
             );
+
 
         this.resizeObserver.observe(
-            this.viewport
+            viewport
         );
+
     }
 
-    // =========================================
-    // Lighting
-    // =========================================
 
-    setupLighting() {
+    // =====================================================
+    // Default lights
+    // =====================================================
 
-        this.hemisphereLight =
+    createDefaultLights() {
+
+        const ambient =
             new THREE.HemisphereLight(
-                0xb9c7ff,
-                0x222222,
+
+                0xffffff,
+                0x333333,
                 2
+
             );
 
+
+        ambient.name =
+            "Ambient Light";
+
+
         this.scene.add(
-            this.hemisphereLight
+            ambient
         );
 
 
-        this.keyLight =
+        const key =
             new THREE.DirectionalLight(
+
                 0xffffff,
                 3
+
             );
 
-        this.keyLight.position.set(
+
+        key.name =
+            "Key Light";
+
+
+        key.position.set(
             5,
-            8,
+            10,
             5
         );
 
-        this.keyLight.castShadow = true;
+
+        key.castShadow =
+            true;
+
+
+        key.shadow.mapSize.width =
+            2048;
+
+
+        key.shadow.mapSize.height =
+            2048;
+
+
+        key.shadow.camera.near =
+            0.1;
+
+
+        key.shadow.camera.far =
+            100;
+
 
         this.scene.add(
-            this.keyLight
+            key
         );
+
     }
 
-    // =========================================
-    // Add object
-    // =========================================
+
+    // =====================================================
+    // Create cube
+    // =====================================================
+
+    createCube(
+        name = "Cube"
+    ) {
+
+        const geometry =
+            new THREE.BoxGeometry(
+                1,
+                1,
+                1
+            );
+
+
+        const material =
+            new THREE.MeshStandardMaterial({
+
+                color: 0x6688cc,
+
+                roughness: 0.65,
+
+                metalness: 0.05
+
+            });
+
+
+        const cube =
+            new THREE.Mesh(
+                geometry,
+                material
+            );
+
+
+        cube.name =
+            name;
+
+
+        cube.castShadow =
+            true;
+
+
+        cube.receiveShadow =
+            true;
+
+
+        this.addObject(
+            cube
+        );
+
+
+        return cube;
+
+    }
+
+
+    // =====================================================
+    // Create sphere
+    // =====================================================
+
+    createSphere(
+        name = "Sphere"
+    ) {
+
+        const geometry =
+            new THREE.SphereGeometry(
+                0.75,
+                32,
+                20
+            );
+
+
+        const material =
+            new THREE.MeshStandardMaterial({
+
+                color: 0xcc8866,
+
+                roughness: 0.6
+
+            });
+
+
+        const sphere =
+            new THREE.Mesh(
+                geometry,
+                material
+            );
+
+
+        sphere.name =
+            name;
+
+
+        sphere.castShadow =
+            true;
+
+
+        sphere.receiveShadow =
+            true;
+
+
+        this.addObject(
+            sphere
+        );
+
+
+        return sphere;
+
+    }
+
+
+    // =====================================================
+    // Create light
+    // =====================================================
+
+    createLight(
+        name = "Light"
+    ) {
+
+        const light =
+            new THREE.PointLight(
+
+                0xffffff,
+
+                50,
+
+                50
+
+            );
+
+
+        light.name =
+            name;
+
+
+        light.position.set(
+            2,
+            4,
+            2
+        );
+
+
+        light.castShadow =
+            true;
+
+
+        this.addObject(
+            light
+        );
+
+
+        /*
+         * Add a visible helper so the
+         * light can be seen in the editor.
+         */
+
+        const helper =
+            new THREE.PointLightHelper(
+                light,
+                0.25
+            );
+
+
+        helper.name =
+            `${name}_Helper`;
+
+
+        light.userData.helper =
+            helper;
+
+
+        this.scene.add(
+            helper
+        );
+
+
+        return light;
+
+    }
+
+
+    // =====================================================
+    // Add existing object
+    // =====================================================
 
     addObject(
         object,
-        name = "Object"
+        name = null
     ) {
 
-        object.name = name;
+        if (!object)
+            return null;
 
-        object.userData.editorObject = true;
+
+        if (name) {
+
+            object.name =
+                name;
+
+        }
+
 
         this.scene.add(
             object
         );
 
-        this.objects.push(
-            object
-        );
+
+        if (
+            !this.objects.includes(
+                object
+            )
+        ) {
+
+            this.objects.push(
+                object
+            );
+
+        }
+
 
         return object;
+
     }
 
-    // =========================================
+
+    // =====================================================
     // Remove object
-    // =========================================
+    // =====================================================
 
     removeObject(
         object
@@ -167,16 +473,16 @@ export class SceneManager {
         if (!object)
             return;
 
-        this.scene.remove(
-            object
-        );
 
         const index =
             this.objects.indexOf(
                 object
             );
 
-        if (index !== -1) {
+
+        if (
+            index !== -1
+        ) {
 
             this.objects.splice(
                 index,
@@ -185,31 +491,83 @@ export class SceneManager {
 
         }
 
-        // Dispose geometry/materials
+
+        /*
+         * Remove helper if this
+         * object owns one.
+         */
+
+        if (
+            object.userData &&
+            object.userData.helper
+        ) {
+
+            this.scene.remove(
+                object.userData.helper
+            );
+
+        }
+
+
+        this.scene.remove(
+            object
+        );
+
+
+        this.disposeObject(
+            object
+        );
+
+    }
+
+
+    // =====================================================
+    // Dispose object resources
+    // =====================================================
+
+    disposeObject(
+        object
+    ) {
+
+        if (!object)
+            return;
+
+
         object.traverse(
             child => {
 
-                if (child.geometry) {
+                if (
+                    child.geometry
+                ) {
 
                     child.geometry.dispose();
 
                 }
 
-                if (child.material) {
 
-                    const materials =
+                if (
+                    child.material
+                ) {
+
+                    if (
                         Array.isArray(
                             child.material
                         )
-                            ? child.material
-                            : [child.material];
-
-                    for (
-                        const material
-                        of materials
                     ) {
 
-                        material.dispose();
+                        child.material.forEach(
+                            material =>
+                                this.disposeMaterial(
+                                    material
+                                )
+                        );
+
+                    }
+                    else {
+
+                        this.disposeMaterial(
+                            child.material
+                        );
 
                     }
 
@@ -217,17 +575,63 @@ export class SceneManager {
 
             }
         );
+
     }
 
-    // =========================================
-    // Clear scene objects
-    // =========================================
+
+    // =====================================================
+    // Dispose material
+    // =====================================================
+
+    disposeMaterial(
+        material
+    ) {
+
+        if (!material)
+            return;
+
+
+        for (
+            const key
+            of Object.keys(
+                material
+            )
+        ) {
+
+            const value =
+                material[key];
+
+
+            if (
+                value &&
+                value.isTexture
+            ) {
+
+                value.dispose();
+
+            }
+
+        }
+
+
+        material.dispose();
+
+    }
+
+
+    // =====================================================
+    // Clear objects
+    // =====================================================
 
     clearObjects() {
 
+        const objects =
+            [...this.objects];
+
+
         for (
             const object
-            of [...this.objects]
+            of objects
         ) {
 
             this.removeObject(
@@ -235,140 +639,98 @@ export class SceneManager {
             );
 
         }
+
     }
 
-    // =========================================
-    // Create cube
-    // =========================================
 
-    createCube(
-        name = "Cube"
+    // =====================================================
+    // Find object by UUID
+    // =====================================================
+
+    getObjectByUUID(
+        uuid
     ) {
 
-        const geometry =
-            new THREE.BoxGeometry(
-                1.5,
-                1.5,
-                1.5
-            );
+        return this.objects.find(
+            object =>
+                object.uuid ===
+                uuid
+        ) || null;
 
-        const material =
-            new THREE.MeshStandardMaterial({
-                color: 0x7b8cff,
-                roughness: 0.65
-            });
-
-        const cube =
-            new THREE.Mesh(
-                geometry,
-                material
-            );
-
-        cube.position.y =
-            0.75;
-
-        cube.castShadow = true;
-
-        cube.receiveShadow = true;
-
-        return this.addObject(
-            cube,
-            name
-        );
     }
 
-    // =========================================
-    // Create point light
-    // =========================================
 
-    createLight(
-        name = "Light"
-    ) {
+    // =====================================================
+    // Find object by name
+    // =====================================================
 
-        const light =
-            new THREE.PointLight(
-                0xffddaa,
-                30,
-                15
-            );
-
-        light.position.set(
-            2,
-            4,
-            2
-        );
-
-        // Small editor marker
-        const marker =
-            new THREE.Mesh(
-                new THREE.SphereGeometry(
-                    0.12
-                ),
-                new THREE.MeshBasicMaterial({
-                    color: 0xffddaa
-                })
-            );
-
-        marker.userData.editorMarker = true;
-
-        light.add(
-            marker
-        );
-
-        return this.addObject(
-            light,
-            name
-        );
-    }
-
-    // =========================================
-    // Find object
-    // =========================================
-
-    findObject(
+    getObjectByName(
         name
     ) {
 
         return this.objects.find(
             object =>
-                object.name === name
-        );
+                object.name ===
+                name
+        ) || null;
+
     }
 
-    // =========================================
+
+    // =====================================================
+    // Get all objects
+    // =====================================================
+
+    getObjects() {
+
+        return this.objects;
+
+    }
+
+
+    // =====================================================
     // Resize renderer
-    // =========================================
+    // =====================================================
 
     resize() {
 
+        if (!this.viewport)
+            return;
+
+
         const width =
-            this.viewport.clientWidth;
+            Math.max(
+                this.viewport.clientWidth,
+                1
+            );
+
 
         const height =
-            this.viewport.clientHeight;
+            Math.max(
+                this.viewport.clientHeight,
+                1
+            );
 
-        if (
-            width <= 0 ||
-            height <= 0
-        ) {
-            return;
-        }
 
         this.camera.aspect =
             width / height;
 
+
         this.camera.updateProjectionMatrix();
+
 
         this.renderer.setSize(
             width,
             height,
             false
         );
+
     }
 
-    // =========================================
+
+    // =====================================================
     // Render
-    // =========================================
+    // =====================================================
 
     render() {
 
@@ -376,22 +738,95 @@ export class SceneManager {
             this.scene,
             this.camera
         );
+
     }
 
-    // =========================================
-    // Dispose
-    // =========================================
 
-    dispose() {
+    // =====================================================
+    // Get scene
+    // =====================================================
 
-        this.resizeObserver.disconnect();
+    getScene() {
+
+        return this.scene;
+
+    }
+
+
+    // =====================================================
+    // Get camera
+    // =====================================================
+
+    getCamera() {
+
+        return this.camera;
+
+    }
+
+
+    // =====================================================
+    // Set grid visibility
+    // =====================================================
+
+    setGridVisible(
+        visible
+    ) {
+
+        this.grid.visible =
+            Boolean(
+                visible
+            );
+
+    }
+
+
+    // =====================================================
+    // Set axes visibility
+    // =====================================================
+
+    setAxesVisible(
+        visible
+    ) {
+
+        this.axes.visible =
+            Boolean(
+                visible
+            );
+
+    }
+
+
+    // =====================================================
+    // Cleanup
+    // =====================================================
+
+    destroy() {
 
         this.clearObjects();
 
+
+        if (
+            this.resizeObserver
+        ) {
+
+            this.resizeObserver.disconnect();
+
+        }
+
+
         this.renderer.dispose();
 
-        this.viewport.removeChild(
-            this.renderer.domElement
-        );
+
+        if (
+            this.renderer.domElement.parentNode
+        ) {
+
+            this.renderer.domElement.parentNode.removeChild(
+                this.renderer.domElement
+            );
+
+        }
+
     }
+
 }
