@@ -11,7 +11,62 @@ import { PropertiesManager } from "./editor/properties.js";
 
 
 // ============================================================
-// Application
+// Error display
+// ============================================================
+
+function showError(error) {
+
+    console.error(error);
+
+    const status =
+        document.querySelector("#status");
+
+    if (status) {
+
+        status.textContent =
+            "ERROR: " +
+            (
+                error?.message ||
+                String(error)
+            );
+
+        status.style.color =
+            "#ff5555";
+
+    }
+
+}
+
+
+// Catch normal JavaScript errors
+window.addEventListener(
+    "error",
+    event => {
+
+        showError(
+            event.error ||
+            new Error(event.message)
+        );
+
+    }
+);
+
+
+// Catch failed promises
+window.addEventListener(
+    "unhandledrejection",
+    event => {
+
+        showError(
+            event.reason
+        );
+
+    }
+);
+
+
+// ============================================================
+// SFM Application
 // ============================================================
 
 class SFMApp {
@@ -34,15 +89,15 @@ class SFMApp {
         if (!this.viewport) {
 
             throw new Error(
-                "SFM-Web: #viewport was not found."
+                "Viewport element #viewport was not found."
             );
 
         }
 
 
-        // ====================================================
+        // =====================================================
         // Scene
-        // ====================================================
+        // =====================================================
 
         this.sceneManager =
             new SceneManager(
@@ -50,9 +105,18 @@ class SFMApp {
             );
 
 
-        // ====================================================
+        if (!this.sceneManager) {
+
+            throw new Error(
+                "SceneManager failed to initialize."
+            );
+
+        }
+
+
+        // =====================================================
         // Camera
-        // ====================================================
+        // =====================================================
 
         this.cameraManager =
             new CameraManager(
@@ -61,9 +125,9 @@ class SFMApp {
             );
 
 
-        // ====================================================
+        // =====================================================
         // Selection
-        // ====================================================
+        // =====================================================
 
         this.selectionManager =
             new SelectionManager(
@@ -71,9 +135,9 @@ class SFMApp {
             );
 
 
-        // ====================================================
+        // =====================================================
         // Gizmos
-        // ====================================================
+        // =====================================================
 
         this.gizmoManager =
             new GizmoManager(
@@ -85,9 +149,9 @@ class SFMApp {
             );
 
 
-        // ====================================================
+        // =====================================================
         // Properties
-        // ====================================================
+        // =====================================================
 
         this.propertiesManager =
             new PropertiesManager(
@@ -98,9 +162,9 @@ class SFMApp {
             );
 
 
-        // ====================================================
-        // Connect selection → properties
-        // ====================================================
+        // =====================================================
+        // Connect systems
+        // =====================================================
 
         this.selectionManager.onSelectionChanged(
             () => {
@@ -115,10 +179,6 @@ class SFMApp {
         );
 
 
-        // ====================================================
-        // Connect gizmo → properties
-        // ====================================================
-
         this.gizmoManager.setObjectChangedCallback(
             () => {
 
@@ -130,34 +190,34 @@ class SFMApp {
         );
 
 
-        // ====================================================
-        // Buttons
-        // ====================================================
+        // =====================================================
+        // Setup UI
+        // =====================================================
 
         this.setupButtons();
-
-
-        // ====================================================
-        // Keyboard
-        // ====================================================
 
         this.setupKeyboard();
 
 
-        // ====================================================
+        // =====================================================
         // Create starting scene
-        // ====================================================
+        // =====================================================
 
         this.createDefaultScene();
 
 
-        // ====================================================
-        // Start
-        // ====================================================
+        // =====================================================
+        // Initial UI
+        // =====================================================
 
         this.updateOutliner();
 
         this.updateStatus();
+
+
+        // =====================================================
+        // Start rendering
+        // =====================================================
 
         this.animate();
 
@@ -165,45 +225,84 @@ class SFMApp {
 
 
     // =========================================================
-    // Default scene
+    // Create default scene
     // =========================================================
 
     createDefaultScene() {
 
-        const cube =
-            this.sceneManager.createCube(
-                "Cube"
+        // -----------------------------------------------------
+        // Cube
+        // -----------------------------------------------------
+
+        if (
+            typeof this.sceneManager.createCube ===
+            "function"
+        ) {
+
+            const cube =
+                this.sceneManager.createCube(
+                    "Cube"
+                );
+
+
+            cube.position.set(
+                0,
+                0.5,
+                0
             );
 
 
-        cube.position.set(
-            0,
-            0.5,
-            0
-        );
-
-
-        const light =
-            this.sceneManager.createLight(
-                "Scene Light"
+            this.selectionManager.select(
+                cube
             );
 
-
-        light.position.set(
-            3,
-            5,
-            3
-        );
+        }
 
 
-        this.selectionManager.select(
-            cube
-        );
+        // -----------------------------------------------------
+        // Light
+        // -----------------------------------------------------
+
+        if (
+            typeof this.sceneManager.createLight ===
+            "function"
+        ) {
+
+            const light =
+                this.sceneManager.createLight(
+                    "Scene Light"
+                );
 
 
-        this.cameraManager.focusObject(
-            cube
-        );
+            light.position.set(
+                3,
+                5,
+                3
+            );
+
+        }
+
+
+        // -----------------------------------------------------
+        // Camera
+        // -----------------------------------------------------
+
+        const selected =
+            this.selectionManager.getSelected();
+
+
+        if (selected) {
+
+            this.cameraManager.focusObject(
+                selected
+            );
+
+        }
+        else {
+
+            this.cameraManager.reset();
+
+        }
 
     }
 
@@ -213,10 +312,6 @@ class SFMApp {
     // =========================================================
 
     setupButtons() {
-
-        // -----------------------------------------------------
-        // Move
-        // -----------------------------------------------------
 
         this.bindButton(
             "#moveTool",
@@ -234,10 +329,6 @@ class SFMApp {
         );
 
 
-        // -----------------------------------------------------
-        // Rotate
-        // -----------------------------------------------------
-
         this.bindButton(
             "#rotateTool",
             () => {
@@ -253,10 +344,6 @@ class SFMApp {
             }
         );
 
-
-        // -----------------------------------------------------
-        // Scale
-        // -----------------------------------------------------
 
         this.bindButton(
             "#scaleTool",
@@ -274,17 +361,27 @@ class SFMApp {
         );
 
 
-        // -----------------------------------------------------
-        // Add cube
-        // -----------------------------------------------------
+        // =====================================================
+        // Add Cube
+        // =====================================================
 
         this.bindButton(
             "#addCube",
             () => {
 
+                if (
+                    typeof this.sceneManager.createCube !==
+                    "function"
+                ) {
+
+                    return;
+
+                }
+
+
                 const cube =
                     this.sceneManager.createCube(
-                        `Cube ${this.sceneManager.objects.length + 1}`
+                        "Cube"
                     );
 
 
@@ -306,17 +403,27 @@ class SFMApp {
         );
 
 
-        // -----------------------------------------------------
-        // Add sphere
-        // -----------------------------------------------------
+        // =====================================================
+        // Add Sphere
+        // =====================================================
 
         this.bindButton(
             "#addSphere",
             () => {
 
+                if (
+                    typeof this.sceneManager.createSphere !==
+                    "function"
+                ) {
+
+                    return;
+
+                }
+
+
                 const sphere =
                     this.sceneManager.createSphere(
-                        `Sphere ${this.sceneManager.objects.length + 1}`
+                        "Sphere"
                     );
 
 
@@ -338,17 +445,27 @@ class SFMApp {
         );
 
 
-        // -----------------------------------------------------
-        // Add light
-        // -----------------------------------------------------
+        // =====================================================
+        // Add Light
+        // =====================================================
 
         this.bindButton(
             "#addLight",
             () => {
 
+                if (
+                    typeof this.sceneManager.createLight !==
+                    "function"
+                ) {
+
+                    return;
+
+                }
+
+
                 const light =
                     this.sceneManager.createLight(
-                        `Light ${this.sceneManager.objects.length + 1}`
+                        "Light"
                     );
 
 
@@ -363,44 +480,23 @@ class SFMApp {
         );
 
 
-        // -----------------------------------------------------
+        // =====================================================
         // Delete
-        // -----------------------------------------------------
+        // =====================================================
 
         this.bindButton(
             "#deleteObject",
             () => {
 
-                const object =
-                    this.selectionManager.getSelected();
-
-
-                if (!object) {
-
-                    return;
-
-                }
-
-
-                this.selectionManager.clear();
-
-
-                this.sceneManager.removeObject(
-                    object
-                );
-
-
-                this.updateOutliner();
-
-                this.propertiesManager.refresh();
+                this.deleteSelected();
 
             }
         );
 
 
-        // -----------------------------------------------------
+        // =====================================================
         // Focus
-        // -----------------------------------------------------
+        // =====================================================
 
         this.bindButton(
             "#focusObject",
@@ -422,9 +518,9 @@ class SFMApp {
         );
 
 
-        // -----------------------------------------------------
-        // Reset camera
-        // -----------------------------------------------------
+        // =====================================================
+        // Reset Camera
+        // =====================================================
 
         this.bindButton(
             "#resetCamera",
@@ -440,9 +536,9 @@ class SFMApp {
         );
 
 
-        // -----------------------------------------------------
-        // Clear scene
-        // -----------------------------------------------------
+        // =====================================================
+        // Clear Scene
+        // =====================================================
 
         this.bindButton(
             "#clearScene",
@@ -450,7 +546,16 @@ class SFMApp {
 
                 this.selectionManager.clear();
 
-                this.sceneManager.clearObjects();
+
+                if (
+                    typeof this.sceneManager.clearObjects ===
+                    "function"
+                ) {
+
+                    this.sceneManager.clearObjects();
+
+                }
+
 
                 this.updateOutliner();
 
@@ -467,7 +572,7 @@ class SFMApp {
 
 
     // =========================================================
-    // Bind button helper
+    // Button helper
     // =========================================================
 
     bindButton(
@@ -506,15 +611,14 @@ class SFMApp {
             "keydown",
             event => {
 
-                /*
-                 * Don't trigger editor shortcuts while
-                 * typing into an input.
-                 */
+                const target =
+                    event.target;
+
 
                 if (
-                    event.target instanceof
+                    target instanceof
                     HTMLInputElement ||
-                    event.target instanceof
+                    target instanceof
                     HTMLTextAreaElement
                 ) {
 
@@ -527,6 +631,7 @@ class SFMApp {
                     event.key.toLowerCase()
                 ) {
 
+                    // Move
                     case "w":
 
                         this.gizmoManager.setMode(
@@ -536,6 +641,7 @@ class SFMApp {
                         break;
 
 
+                    // Rotate
                     case "e":
 
                         this.gizmoManager.setMode(
@@ -545,6 +651,7 @@ class SFMApp {
                         break;
 
 
+                    // Scale
                     case "r":
 
                         this.gizmoManager.setMode(
@@ -554,18 +661,40 @@ class SFMApp {
                         break;
 
 
+                    // Focus
                     case "f":
 
-                        this.cameraManager.focusObject(
-                            this.selectionManager.getSelected()
-                        );
+                        {
+
+                            const object =
+                                this.selectionManager.getSelected();
+
+
+                            if (object) {
+
+                                this.cameraManager.focusObject(
+                                    object
+                                );
+
+                            }
+
+                        }
 
                         break;
 
 
+                    // Delete
                     case "delete":
 
                         this.deleteSelected();
+
+                        break;
+
+
+                    // Escape
+                    case "escape":
+
+                        this.selectionManager.clear();
 
                         break;
 
@@ -596,14 +725,26 @@ class SFMApp {
 
         this.selectionManager.clear();
 
-        this.sceneManager.removeObject(
-            object
-        );
+
+        if (
+            typeof this.sceneManager.removeObject ===
+            "function"
+        ) {
+
+            this.sceneManager.removeObject(
+                object
+            );
+
+        }
 
 
         this.updateOutliner();
 
         this.propertiesManager.refresh();
+
+        this.setStatus(
+            "Object deleted"
+        );
 
     }
 
@@ -629,9 +770,14 @@ class SFMApp {
             this.selectionManager.getSelected();
 
 
+        const objects =
+            this.sceneManager.objects ||
+            [];
+
+
         for (
             const object
-            of this.sceneManager.objects
+            of objects
         ) {
 
             const item =
@@ -657,6 +803,7 @@ class SFMApp {
 
             item.textContent =
                 object.name ||
+                object.type ||
                 "Object";
 
 
@@ -703,7 +850,7 @@ class SFMApp {
 
 
         this.setStatus(
-            `Selected: ${object.name}`
+            `Selected: ${object.name || object.type}`
         );
 
     }
@@ -713,12 +860,19 @@ class SFMApp {
         text
     ) {
 
-        if (this.status) {
+        if (!this.status) {
 
-            this.status.textContent =
-                text;
+            return;
 
         }
+
+
+        this.status.textContent =
+            text;
+
+
+        this.status.style.color =
+            "";
 
     }
 
@@ -734,10 +888,24 @@ class SFMApp {
         );
 
 
-        this.selectionManager.refresh();
+        if (
+            this.selectionManager
+        ) {
+
+            this.selectionManager.refresh();
+
+        }
 
 
-        this.sceneManager.render();
+        if (
+            this.sceneManager &&
+            typeof this.sceneManager.render ===
+            "function"
+        ) {
+
+            this.sceneManager.render();
+
+        }
 
     }
 
@@ -745,7 +913,7 @@ class SFMApp {
 
 
 // ============================================================
-// Start application
+// Start
 // ============================================================
 
 function startSFM() {
@@ -756,15 +924,31 @@ function startSFM() {
             new SFMApp();
 
 
+        const status =
+            document.querySelector(
+                "#status"
+            );
+
+
+        if (status) {
+
+            status.textContent =
+                "SFM-Web ready";
+
+            status.style.color =
+                "";
+
+        }
+
+
         console.log(
-            "SFM-Web initialized."
+            "SFM-Web initialized successfully."
         );
 
     }
     catch (error) {
 
-        console.error(
-            "SFM-Web failed to initialize:",
+        showError(
             error
         );
 
@@ -772,6 +956,10 @@ function startSFM() {
 
 }
 
+
+// ============================================================
+// Start after DOM
+// ============================================================
 
 if (
     document.readyState ===
