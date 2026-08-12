@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
 
     <meta
@@ -14,289 +16,348 @@
         rel="stylesheet"
         href="style.css"
     >
+
 </head>
+
 
 <body>
 
-    <!-- =====================================================
-         TOP BAR
-         ===================================================== -->
 
-    <header id="topbar">
+<!-- ===================================================== -->
+<!-- TOP BAR -->
+<!-- ===================================================== -->
 
-        <div class="logo">
-            SFM-Web
+<header id="topbar">
+
+    <div class="logo">
+        SFM-Web
+    </div>
+
+
+    <div class="menu">
+
+        <button id="newScene">
+            New
+        </button>
+
+        <button id="saveScene">
+            Save
+        </button>
+
+        <button id="loadScene">
+            Load
+        </button>
+
+        <label class="file-button">
+            Import Model
+            <input
+                id="modelFile"
+                type="file"
+                accept=".glb,.gltf,.obj,.fbx"
+                hidden
+            >
+        </label>
+
+    </div>
+
+</header>
+
+
+
+<!-- ===================================================== -->
+<!-- MAIN EDITOR -->
+<!-- ===================================================== -->
+
+<main id="editor">
+
+
+    <!-- ================================================= -->
+    <!-- LEFT PANEL -->
+    <!-- ================================================= -->
+
+    <aside id="leftPanel">
+
+
+        <div class="panel-header">
+            Scene
         </div>
 
-        <div class="menu">
 
-            <button id="newScene">
-                New
+        <div
+            id="outliner"
+            class="panel-section"
+        >
+        </div>
+
+
+        <div class="panel-header">
+            Create
+        </div>
+
+
+        <div class="button-grid">
+
+            <button id="addCube">
+                Cube
             </button>
 
-            <button id="saveScene">
-                Save
+            <button id="addSphere">
+                Sphere
             </button>
 
-            <button id="loadScene">
-                Load
+            <button id="addLight">
+                Light
             </button>
-
-            <label class="file-button">
-
-                Import Model
-
-                <input
-                    id="modelInput"
-                    type="file"
-                    accept=".glb,.gltf"
-                    hidden
-                >
-
-            </label>
 
         </div>
 
-    </header>
+
+        <div class="panel-header">
+            Scene
+        </div>
 
 
-    <!-- =====================================================
-         MAIN EDITOR
-         ===================================================== -->
+        <div class="button-grid">
 
-    <main id="editor">
+            <button id="focusObject">
+                Focus
+            </button>
 
-        <!-- =================================================
-             LEFT SIDEBAR / OUTLINER
-             ================================================= -->
+            <button id="deleteObject">
+                Delete
+            </button>
 
-        <aside id="leftPanel">
+            <button id="resetCamera">
+                Reset Camera
+            </button>
 
-            <div class="panel-header">
-                Scene
-            </div>
+            <button id="clearScene">
+                Clear
+            </button>
 
-            <div id="outliner">
-
-                <!-- Objects appear here -->
-
-            </div>
+        </div>
 
 
-            <div class="panel-section">
-
-                <div class="panel-header">
-                    Create
-                </div>
-
-                <div class="button-grid">
-
-                    <button id="addCube">
-                        + Cube
-                    </button>
-
-                    <button id="addLight">
-                        + Light
-                    </button>
-
-                </div>
-
-            </div>
-
-        </aside>
+    </aside>
 
 
-        <!-- =================================================
-             CENTER VIEWPORT
-             ================================================= -->
 
-        <section id="center">
+    <!-- ================================================= -->
+    <!-- CENTER -->
+    <!-- ================================================= -->
 
-            <div id="toolbar">
-
-                <button
-                    data-tool="translate"
-                    title="Move"
-                >
-                    Move
-                </button>
-
-                <button
-                    data-tool="rotate"
-                    title="Rotate"
-                >
-                    Rotate
-                </button>
-
-                <button
-                    data-tool="scale"
-                    title="Scale"
-                >
-                    Scale
-                </button>
-
-                <button
-                    id="aiButton"
-                    title="Puter AI"
-                >
-                    AI
-                </button>
-
-            </div>
+    <section id="center">
 
 
-            <div id="viewport">
+        <!-- ============================================= -->
+        <!-- TOOLBAR -->
+        <!-- ============================================= -->
 
-                <!-- Three.js renderer goes here -->
+        <div id="toolbar">
 
-            </div>
+            <button id="moveTool">
+                Move
+            </button>
+
+            <button id="rotateTool">
+                Rotate
+            </button>
+
+            <button id="scaleTool">
+                Scale
+            </button>
+
+        </div>
 
 
+
+        <!-- ============================================= -->
+        <!-- VIEWPORT -->
+        <!-- ============================================= -->
+
+        <div id="viewport">
+
+
+            <!-- ========================================= -->
             <!-- AI PANEL -->
+            <!-- ========================================= -->
 
             <div id="aiPanel">
 
                 <input
                     id="aiPrompt"
                     type="text"
-                    placeholder="Ask the AI..."
-                    autocomplete="off"
+                    placeholder="Ask AI..."
                 >
 
-                <button id="askAI">
-                    Ask
+                <button id="aiSend">
+                    AI
                 </button>
 
-                <pre id="aiOutput"></pre>
 
-            </div>
-
-
-            <!-- STATUS BAR -->
-
-            <div id="statusbar">
-
-                <span id="status">
-                    Loading SFM-Web...
-                </span>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             RIGHT PROPERTIES PANEL
-             ================================================= -->
-
-        <aside id="rightPanel">
-
-            <div class="panel-header">
-                Properties
-            </div>
-
-            <div id="properties">
-
-                <div class="empty-properties">
-                    Select an object
+                <div id="aiOutput">
                 </div>
 
             </div>
 
-        </aside>
-
-    </main>
-
-
-    <!-- =====================================================
-         TIMELINE
-         ===================================================== -->
-
-    <section id="timelinePanel">
-
-        <div class="timeline-controls">
-
-            <button id="stop">
-                ⏹
-            </button>
-
-            <button id="play">
-                ▶
-            </button>
-
-            <button id="pause">
-                ⏸
-            </button>
-
-            <button id="addKeyframe">
-                ◆ Add Keyframe
-            </button>
-
-            <button id="deleteKeyframe">
-                ◆ Delete Keyframe
-            </button>
 
         </div>
 
 
-        <div class="timeline-settings">
 
-            <label>
-                Duration:
+        <!-- ============================================= -->
+        <!-- STATUS BAR -->
+        <!-- ============================================= -->
 
-                <input
-                    id="duration"
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value="10"
-                >
+        <div id="statusbar">
 
-                seconds
-            </label>
-
-        </div>
-
-
-        <div class="timeline-main">
-
-            <div class="timeline-label">
-                Time
-            </div>
-
-            <input
-                id="timeline"
-                type="range"
-                min="0"
-                max="10"
-                step="0.01"
-                value="0"
-            >
-
-            <span id="timeLabel">
-                0.00s
+            <span id="status">
+                Loading SFM-Web...
             </span>
 
         </div>
 
+
     </section>
 
 
-    <!-- =====================================================
-         PUTER.JS
-         ===================================================== -->
 
-    <script src="https://js.puter.com/v2/"></script>
+    <!-- ================================================= -->
+    <!-- RIGHT PANEL -->
+    <!-- ================================================= -->
+
+    <aside id="rightPanel">
 
 
-    <!-- =====================================================
-         MAIN APP
-         ===================================================== -->
+        <div class="panel-header">
+            Properties
+        </div>
 
-    <script
-        type="module"
-        src="app.js"
-    ></script>
+
+        <div id="properties">
+
+            <div class="empty-properties">
+                Select an object
+            </div>
+
+        </div>
+
+
+    </aside>
+
+
+</main>
+
+
+
+<!-- ===================================================== -->
+<!-- TIMELINE -->
+<!-- ===================================================== -->
+
+<section id="timelinePanel">
+
+
+    <div class="timeline-controls">
+
+
+        <button id="timelineStart">
+            |◀
+        </button>
+
+
+        <button id="timelinePrevious">
+            ◀
+        </button>
+
+
+        <button id="timelinePlay">
+            ▶
+        </button>
+
+
+        <button id="timelineNext">
+            ▶
+        </button>
+
+
+        <button id="timelineEnd">
+            ▶|
+        </button>
+
+
+        <button id="addKeyframe">
+            ◆ Add Keyframe
+        </button>
+
+
+        <button id="deleteKeyframe">
+            ◆ Delete Keyframe
+        </button>
+
+
+    </div>
+
+
+
+    <div class="timeline-settings">
+
+        Duration:
+
+        <input
+            id="duration"
+            type="number"
+            min="1"
+            max="9999"
+            step="1"
+            value="10"
+        >
+
+        seconds
+
+    </div>
+
+
+
+    <div class="timeline-main">
+
+
+        <span class="timeline-label">
+            Time
+        </span>
+
+
+        <input
+            id="timeline"
+            type="range"
+            min="0"
+            max="10"
+            step="0.01"
+            value="0"
+        >
+
+
+        <span id="timeLabel">
+            0.00s
+        </span>
+
+
+    </div>
+
+
+</section>
+
+
+
+<!-- ===================================================== -->
+<!-- APPLICATION -->
+<!-- ===================================================== -->
+
+<script
+    type="module"
+    src="app.js"
+></script>
+
 
 </body>
+
 </html>
