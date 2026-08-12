@@ -2,10 +2,10 @@
 // SFM-Web main controller
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js";
 
 import { SceneManager } from "./editor/scene.js";
+import { CameraManager } from "./editor/camera.js";
 
 
 /* =========================================================
@@ -38,14 +38,13 @@ const aiOutput =
 
 
 /* =========================================================
-   SCENE MANAGER
+   CORE SYSTEMS
    ========================================================= */
 
 const sceneManager =
     new SceneManager(
         viewport
     );
-
 
 const scene =
     sceneManager.scene;
@@ -57,27 +56,15 @@ const renderer =
     sceneManager.renderer;
 
 
-/* =========================================================
-   CAMERA CONTROLS
-   ========================================================= */
-
-const controls =
-    new OrbitControls(
+const cameraManager =
+    new CameraManager(
         camera,
-        renderer.domElement
+        renderer
     );
 
-controls.target.set(
-    0,
-    1,
-    0
-);
-
-controls.enableDamping = true;
-
 
 /* =========================================================
-   STATE
+   EDITOR STATE
    ========================================================= */
 
 let selected = null;
@@ -91,7 +78,7 @@ let currentTime = 0;
 
 
 /* =========================================================
-   SELECT OBJECT
+   SELECTION
    ========================================================= */
 
 function selectObject(
@@ -190,16 +177,19 @@ function renderProperties() {
 
             <input
                 id="posX"
+                placeholder="X"
                 value="${selected.position.x.toFixed(2)}"
             >
 
             <input
                 id="posY"
+                placeholder="Y"
                 value="${selected.position.y.toFixed(2)}"
             >
 
             <input
                 id="posZ"
+                placeholder="Z"
                 value="${selected.position.z.toFixed(2)}"
             >
 
@@ -212,6 +202,7 @@ function renderProperties() {
 
             <input
                 id="rotX"
+                placeholder="X"
                 value="${THREE.MathUtils.radToDeg(
                     selected.rotation.x
                 ).toFixed(1)}"
@@ -219,6 +210,7 @@ function renderProperties() {
 
             <input
                 id="rotY"
+                placeholder="Y"
                 value="${THREE.MathUtils.radToDeg(
                     selected.rotation.y
                 ).toFixed(1)}"
@@ -226,6 +218,7 @@ function renderProperties() {
 
             <input
                 id="rotZ"
+                placeholder="Z"
                 value="${THREE.MathUtils.radToDeg(
                     selected.rotation.z
                 ).toFixed(1)}"
@@ -240,20 +233,31 @@ function renderProperties() {
 
             <input
                 id="scaleX"
+                placeholder="X"
                 value="${selected.scale.x.toFixed(2)}"
             >
 
             <input
                 id="scaleY"
+                placeholder="Y"
                 value="${selected.scale.y.toFixed(2)}"
             >
 
             <input
                 id="scaleZ"
+                placeholder="Z"
                 value="${selected.scale.z.toFixed(2)}"
             >
 
         </div>
+
+
+        <button
+            id="focusObject"
+            class="wide"
+        >
+            Focus Camera
+        </button>
 
 
         <button
@@ -262,8 +266,33 @@ function renderProperties() {
         >
             Delete Object
         </button>
+
     `;
 
+
+    /* -----------------------------------------
+       NAME
+       ----------------------------------------- */
+
+    document.querySelector(
+        "#propName"
+    ).addEventListener(
+        "change",
+        event => {
+
+            selected.name =
+                event.target.value ||
+                "Object";
+
+            refreshOutliner();
+
+        }
+    );
+
+
+    /* -----------------------------------------
+       POSITION
+       ----------------------------------------- */
 
     bindNumber(
         "#posX",
@@ -286,6 +315,10 @@ function renderProperties() {
                 value
     );
 
+
+    /* -----------------------------------------
+       ROTATION
+       ----------------------------------------- */
 
     bindNumber(
         "#rotX",
@@ -315,6 +348,10 @@ function renderProperties() {
     );
 
 
+    /* -----------------------------------------
+       SCALE
+       ----------------------------------------- */
+
     bindNumber(
         "#scaleX",
         value =>
@@ -337,21 +374,25 @@ function renderProperties() {
     );
 
 
+    /* -----------------------------------------
+       FOCUS
+       ----------------------------------------- */
+
     document.querySelector(
-        "#propName"
-    ).addEventListener(
-        "change",
-        event => {
+        "#focusObject"
+    ).onclick =
+        () => {
 
-            selected.name =
-                event.target.value ||
-                "Object";
+            cameraManager.focusObject(
+                selected
+            );
 
-            refreshOutliner();
+        };
 
-        }
-    );
 
+    /* -----------------------------------------
+       DELETE
+       ----------------------------------------- */
 
     document.querySelector(
         "#deleteObject"
@@ -464,46 +505,62 @@ function escapeHTML(
    ADD CUBE
    ========================================================= */
 
-document.querySelector(
-    "#addCube"
-).onclick =
-    () => {
+const addCubeButton =
+    document.querySelector(
+        "#addCube"
+    );
 
-        const cube =
-            sceneManager.createCube();
+if (addCubeButton) {
 
-        selectObject(
-            cube
-        );
+    addCubeButton.onclick =
+        () => {
 
-        status.textContent =
-            "Cube added";
-    };
+            const cube =
+                sceneManager.createCube(
+                    "Cube"
+                );
+
+            selectObject(
+                cube
+            );
+
+            status.textContent =
+                "Cube added";
+        };
+}
 
 
 /* =========================================================
    ADD LIGHT
    ========================================================= */
 
-document.querySelector(
-    "#addLight"
-).onclick =
-    () => {
+const addLightButton =
+    document.querySelector(
+        "#addLight"
+    );
 
-        const light =
-            sceneManager.createLight();
+if (addLightButton) {
 
-        selectObject(
-            light
-        );
+    addLightButton.onclick =
+        () => {
 
-        status.textContent =
-            "Light added";
-    };
+            const light =
+                sceneManager.createLight(
+                    "Light"
+                );
+
+            selectObject(
+                light
+            );
+
+            status.textContent =
+                "Light added";
+        };
+}
 
 
 /* =========================================================
-   TOOLS
+   EDITOR TOOLS
    ========================================================= */
 
 document
@@ -531,33 +588,39 @@ document
    NEW SCENE
    ========================================================= */
 
-document.querySelector(
-    "#newScene"
-).onclick =
-    () => {
+const newSceneButton =
+    document.querySelector(
+        "#newScene"
+    );
 
-        sceneManager.clearObjects();
+if (newSceneButton) {
 
-        selected = null;
+    newSceneButton.onclick =
+        () => {
 
-        currentTime = 0;
+            sceneManager.clearObjects();
 
-        timeline.value = 0;
+            selected = null;
 
-        timeLabel.textContent =
-            "0.00s";
+            currentTime = 0;
 
-        refreshOutliner();
+            timeline.value = 0;
 
-        renderProperties();
+            timeLabel.textContent =
+                "0.00s";
 
-        status.textContent =
-            "New scene";
-    };
+            refreshOutliner();
+
+            renderProperties();
+
+            status.textContent =
+                "New scene";
+        };
+}
 
 
 /* =========================================================
-   OBJECT PICKING
+   VIEWPORT OBJECT SELECTION
    ========================================================= */
 
 const raycaster =
@@ -649,262 +712,300 @@ const modelInput =
     );
 
 
-modelInput.addEventListener(
-    "change",
-    event => {
+if (modelInput) {
 
-        const file =
-            event.target.files[0];
+    modelInput.addEventListener(
+        "change",
+        event => {
 
-        if (!file)
-            return;
+            const file =
+                event.target.files[0];
 
-
-        const url =
-            URL.createObjectURL(
-                file
-            );
+            if (!file)
+                return;
 
 
-        const loader =
-            new GLTFLoader();
-
-
-        loader.load(
-
-            url,
-
-            gltf => {
-
-                const model =
-                    gltf.scene;
-
-
-                model.position.set(
-                    0,
-                    0,
-                    0
+            const url =
+                URL.createObjectURL(
+                    file
                 );
 
 
-                model.traverse(
-                    object => {
-
-                        if (
-                            object.isMesh
-                        ) {
-
-                            object.castShadow =
-                                true;
-
-                            object.receiveShadow =
-                                true;
-                        }
-                    }
-                );
+            const loader =
+                new GLTFLoader();
 
 
-                const name =
-                    file.name.replace(
-                        /\.(glb|gltf)$/i,
-                        ""
+            loader.load(
+
+                url,
+
+                gltf => {
+
+                    const model =
+                        gltf.scene;
+
+
+                    model.position.set(
+                        0,
+                        0,
+                        0
                     );
 
 
-                sceneManager.addObject(
-                    model,
-                    name
-                );
+                    model.traverse(
+                        object => {
+
+                            if (
+                                object.isMesh
+                            ) {
+
+                                object.castShadow =
+                                    true;
+
+                                object.receiveShadow =
+                                    true;
+                            }
+                        }
+                    );
 
 
-                selectObject(
-                    model
-                );
+                    const name =
+                        file.name.replace(
+                            /\.(glb|gltf)$/i,
+                            ""
+                        );
 
 
-                status.textContent =
-                    "Imported " +
-                    file.name;
+                    sceneManager.addObject(
+                        model,
+                        name
+                    );
 
 
-                URL.revokeObjectURL(
-                    url
-                );
-            },
+                    selectObject(
+                        model
+                    );
 
-            undefined,
 
-            error => {
+                    status.textContent =
+                        "Imported " +
+                        file.name;
 
-                console.error(
-                    error
-                );
 
-                status.textContent =
-                    "Model import failed";
+                    URL.revokeObjectURL(
+                        url
+                    );
+                },
 
-                URL.revokeObjectURL(
-                    url
-                );
-            }
-        );
-    }
-);
+                undefined,
+
+                error => {
+
+                    console.error(
+                        error
+                    );
+
+                    status.textContent =
+                        "Model import failed";
+
+                    URL.revokeObjectURL(
+                        url
+                    );
+                }
+            );
+        }
+    );
+}
 
 
 /* =========================================================
    TIMELINE
    ========================================================= */
 
-timeline.addEventListener(
-    "input",
-    () => {
+if (timeline) {
 
-        currentTime =
-            Number(
-                timeline.value
-            );
+    timeline.addEventListener(
+        "input",
+        () => {
 
-        timeLabel.textContent =
-            currentTime.toFixed(
-                2
-            ) + "s";
-    }
-);
+            currentTime =
+                Number(
+                    timeline.value
+                );
 
-
-document.querySelector(
-    "#play"
-).onclick =
-    () => {
-
-        playing = true;
-    };
+            timeLabel.textContent =
+                currentTime.toFixed(
+                    2
+                ) + "s";
+        }
+    );
+}
 
 
-document.querySelector(
-    "#stop"
-).onclick =
-    () => {
+/* =========================================================
+   PLAY
+   ========================================================= */
 
-        playing = false;
+const playButton =
+    document.querySelector(
+        "#play"
+    );
 
-        currentTime = 0;
+if (playButton) {
 
-        timeline.value = 0;
+    playButton.onclick =
+        () => {
 
-        timeLabel.textContent =
-            "0.00s";
-    };
+            playing = true;
+
+            status.textContent =
+                "Playing";
+        };
+}
+
+
+/* =========================================================
+   STOP
+   ========================================================= */
+
+const stopButton =
+    document.querySelector(
+        "#stop"
+    );
+
+if (stopButton) {
+
+    stopButton.onclick =
+        () => {
+
+            playing = false;
+
+            currentTime = 0;
+
+            timeline.value = 0;
+
+            timeLabel.textContent =
+                "0.00s";
+
+            status.textContent =
+                "Stopped";
+        };
+}
 
 
 /* =========================================================
    PUTER SAVE
    ========================================================= */
 
-document.querySelector(
-    "#saveScene"
-).onclick =
-    async () => {
+const saveButton =
+    document.querySelector(
+        "#saveScene"
+    );
 
-        try {
+if (saveButton) {
 
-            const data =
-                serializeScene();
+    saveButton.onclick =
+        async () => {
 
+            try {
 
-            await puter.fs.write(
-                "sfm-web-project.json",
-                JSON.stringify(
-                    data,
-                    null,
-                    2
-                )
-            );
+                const data =
+                    serializeScene();
 
 
-            status.textContent =
-                "Saved to Puter";
+                await puter.fs.write(
+                    "sfm-web-project.json",
+                    JSON.stringify(
+                        data,
+                        null,
+                        2
+                    )
+                );
 
-        }
-        catch (error) {
 
-            console.error(
-                error
-            );
+                status.textContent =
+                    "Saved to Puter";
 
-            status.textContent =
-                "Save failed";
-        }
-    };
+            }
+            catch (error) {
+
+                console.error(
+                    error
+                );
+
+                status.textContent =
+                    "Save failed";
+            }
+        };
+}
 
 
 /* =========================================================
    PUTER LOAD
    ========================================================= */
 
-document.querySelector(
-    "#loadScene"
-).onclick =
-    async () => {
+const loadButton =
+    document.querySelector(
+        "#loadScene"
+    );
 
-        try {
+if (loadButton) {
 
-            const file =
-                await puter.fs.read(
-                    "sfm-web-project.json"
+    loadButton.onclick =
+        async () => {
+
+            try {
+
+                const file =
+                    await puter.fs.read(
+                        "sfm-web-project.json"
+                    );
+
+
+                const text =
+                    await file.text();
+
+
+                const data =
+                    JSON.parse(
+                        text
+                    );
+
+
+                restoreScene(
+                    data
                 );
 
 
-            const text =
-                await file.text();
+                status.textContent =
+                    "Loaded from Puter";
 
+            }
+            catch (error) {
 
-            const data =
-                JSON.parse(
-                    text
+                console.error(
+                    error
                 );
 
-
-            restoreScene(
-                data
-            );
-
-
-            status.textContent =
-                "Loaded from Puter";
-
-        }
-        catch (error) {
-
-            console.error(
-                error
-            );
-
-            status.textContent =
-                "No saved project found";
-        }
-    };
+                status.textContent =
+                    "No saved project found";
+            }
+        };
+}
 
 
 /* =========================================================
-   SERIALIZE
+   SERIALIZE SCENE
    ========================================================= */
 
 function serializeScene() {
 
     return {
 
-        version: 1,
+        version: 2,
 
-        camera: {
-
-            position:
-                camera.position.toArray(),
-
-            target:
-                controls.target.toArray()
-        },
+        camera:
+            cameraManager.serialize(),
 
         objects:
             sceneManager.objects.map(
@@ -936,7 +1037,7 @@ function serializeScene() {
 
 
 /* =========================================================
-   RESTORE
+   RESTORE SCENE
    ========================================================= */
 
 function restoreScene(
@@ -950,12 +1051,8 @@ function restoreScene(
 
     if (data.camera) {
 
-        camera.position.fromArray(
-            data.camera.position
-        );
-
-        controls.target.fromArray(
-            data.camera.target
+        cameraManager.restore(
+            data.camera
         );
     }
 
@@ -972,21 +1069,45 @@ function restoreScene(
 
             const object =
                 sceneManager.createCube(
-                    objectData.name
+                    objectData.name ||
+                    "Cube"
                 );
 
 
-            object.position.fromArray(
-                objectData.position
-            );
+            if (
+                Array.isArray(
+                    objectData.position
+                )
+            ) {
 
-            object.rotation.fromArray(
-                objectData.rotation
-            );
+                object.position.fromArray(
+                    objectData.position
+                );
+            }
 
-            object.scale.fromArray(
-                objectData.scale
-            );
+
+            if (
+                Array.isArray(
+                    objectData.rotation
+                )
+            ) {
+
+                object.rotation.fromArray(
+                    objectData.rotation
+                );
+            }
+
+
+            if (
+                Array.isArray(
+                    objectData.scale
+                )
+            ) {
+
+                object.scale.fromArray(
+                    objectData.scale
+                );
+            }
         }
     }
 
@@ -1001,80 +1122,142 @@ function restoreScene(
    PUTER AI
    ========================================================= */
 
-document.querySelector(
-    "#askAI"
-).onclick =
-    async () => {
+const askAIButton =
+    document.querySelector(
+        "#askAI"
+    );
 
-        const prompt =
-            aiPrompt.value.trim();
+if (
+    askAIButton &&
+    aiPrompt &&
+    aiOutput
+) {
+
+    askAIButton.onclick =
+        async () => {
+
+            const prompt =
+                aiPrompt.value.trim();
 
 
-        if (!prompt)
-            return;
+            if (!prompt)
+                return;
 
 
-        aiOutput.textContent =
-            "Thinking...";
+            aiOutput.textContent =
+                "Thinking...";
 
 
-        try {
+            try {
 
-            const response =
-                await puter.ai.chat(
+                const response =
+                    await puter.ai.chat(
 
-                    `You are an assistant for SFM-Web,
-a browser-based Source Filmmaker-style editor.
+                        `You are the AI assistant
+inside SFM-Web, a browser-based
+Source Filmmaker-style editor.
 
-Help with:
+Help the user with:
+
 - filmmaking
 - camera composition
 - lighting
 - posing
 - animation
 - scene setup
+- troubleshooting
 
 User request:
 
 ${prompt}`,
 
-                    {
-                        model:
-                            "gpt-5.4-nano"
-                    }
+                        {
+                            model:
+                                "gpt-5.4-nano"
+                        }
+                    );
+
+
+                aiOutput.textContent =
+                    response?.message?.content ??
+                    response?.text ??
+                    String(response);
+
+            }
+            catch (error) {
+
+                console.error(
+                    error
                 );
 
-
-            aiOutput.textContent =
-                response?.message?.content ??
-                response?.text ??
-                String(response);
-
-        }
-        catch (error) {
-
-            console.error(
-                error
-            );
-
-            aiOutput.textContent =
-                "AI error: " +
-                error.message;
-        }
-    };
+                aiOutput.textContent =
+                    "AI error: " +
+                    error.message;
+            }
+        };
+}
 
 
 /* =========================================================
    AI BUTTON
    ========================================================= */
 
-document.querySelector(
-    "#aiButton"
-).onclick =
-    () => {
+const aiButton =
+    document.querySelector(
+        "#aiButton"
+    );
 
-        aiPrompt.focus();
-    };
+if (aiButton) {
+
+    aiButton.onclick =
+        () => {
+
+            if (aiPrompt) {
+
+                aiPrompt.focus();
+
+            }
+        };
+}
+
+
+/* =========================================================
+   FOCUS SELECTED OBJECT
+   ========================================================= */
+
+window.addEventListener(
+    "keydown",
+    event => {
+
+        // Don't steal F from text inputs.
+        if (
+            event.target.tagName ===
+                "INPUT" ||
+            event.target.tagName ===
+                "TEXTAREA"
+        ) {
+
+            return;
+        }
+
+
+        if (
+            event.key.toLowerCase() ===
+            "f"
+        ) {
+
+            if (selected) {
+
+                cameraManager.focusObject(
+                    selected
+                );
+
+                status.textContent =
+                    "Camera focused";
+            }
+        }
+    }
+);
 
 
 /* =========================================================
@@ -1127,14 +1310,14 @@ function animate(
     }
 
 
-    controls.update();
+    cameraManager.update();
 
     sceneManager.render();
 }
 
 
 /* =========================================================
-   START
+   START EDITOR
    ========================================================= */
 
 const firstCube =
@@ -1145,6 +1328,11 @@ const firstCube =
 selectObject(
     firstCube
 );
+
+
+status.textContent =
+    "SFM-Web ready";
+
 
 animate(
     performance.now()
