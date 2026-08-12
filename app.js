@@ -10,6 +10,11 @@ import { SelectionManager } from "./editor/selection.js";
 import { GizmoManager } from "./editor/gizmos.js";
 import { PropertiesManager } from "./editor/properties.js";
 
+import { KeyframeManager } from "./animation/keyframes.js";
+import { Animator } from "./animation/animator.js";
+import { Timeline } from "./animation/timeline.js";
+import { BoneManager } from "./animation/bones.js";
+
 
 /* =========================================================
    DOM
@@ -27,7 +32,7 @@ const outliner =
 const properties =
     document.querySelector("#properties");
 
-const timeline =
+const timelineElement =
     document.querySelector("#timeline");
 
 const timeLabel =
@@ -41,7 +46,7 @@ const aiOutput =
 
 
 /* =========================================================
-   SAFETY CHECK
+   VIEWPORT CHECK
    ========================================================= */
 
 if (!viewport) {
@@ -54,13 +59,11 @@ if (!viewport) {
 
 
 /* =========================================================
-   CORE SYSTEMS
+   CORE
    ========================================================= */
 
 const sceneManager =
-    new SceneManager(
-        viewport
-    );
+    new SceneManager(viewport);
 
 const scene =
     sceneManager.scene;
@@ -105,17 +108,51 @@ const propertiesManager =
 
 
 /* =========================================================
+   ANIMATION SYSTEM
+   ========================================================= */
+
+const keyframeManager =
+    new KeyframeManager();
+
+
+const animator =
+    new Animator(
+        keyframeManager
+    );
+
+
+animator.setObjectProvider(
+    () => sceneManager.objects
+);
+
+
+const timeline =
+    new Timeline(
+        timelineElement,
+        animator,
+        keyframeManager
+    );
+
+
+timeline.setDuration(
+    10
+);
+
+
+/* =========================================================
+   BONES
+   ========================================================= */
+
+const boneManager =
+    new BoneManager();
+
+
+/* =========================================================
    STATE
    ========================================================= */
 
 let currentTool =
     "translate";
-
-let playing =
-    false;
-
-let currentTime =
-    0;
 
 
 /* =========================================================
@@ -204,7 +241,7 @@ function refreshOutliner() {
 
 
 /* =========================================================
-   SELECTION UPDATES
+   SELECTION
    ========================================================= */
 
 selectionManager.onSelectionChanged(
@@ -213,6 +250,10 @@ selectionManager.onSelectionChanged(
         refreshOutliner();
 
         propertiesManager.refresh();
+
+        timeline.setSelectedObject(
+            object
+        );
 
 
         if (object) {
@@ -235,7 +276,7 @@ selectionManager.onSelectionChanged(
 
 
 /* =========================================================
-   GIZMO
+   GIZMO CHANGES
    ========================================================= */
 
 gizmoManager.setObjectChangedCallback(
@@ -372,7 +413,7 @@ document
 
 
 /* =========================================================
-   KEYBOARD SHORTCUTS
+   KEYBOARD
    ========================================================= */
 
 window.addEventListener(
@@ -395,8 +436,6 @@ window.addEventListener(
             event.key.toLowerCase();
 
 
-        /* Move */
-
         if (key === "w") {
 
             currentTool =
@@ -412,8 +451,6 @@ window.addEventListener(
 
         }
 
-
-        /* Rotate */
 
         else if (key === "e") {
 
@@ -431,8 +468,6 @@ window.addEventListener(
         }
 
 
-        /* Scale */
-
         else if (key === "r") {
 
             currentTool =
@@ -448,8 +483,6 @@ window.addEventListener(
 
         }
 
-
-        /* Focus */
 
         else if (key === "f") {
 
@@ -472,32 +505,46 @@ window.addEventListener(
         }
 
 
-        /* Delete */
-
         else if (
-            event.key === "Delete" ||
-            event.key === "Backspace"
+            event.key === "Delete"
         ) {
 
-            const selected =
-                selectionManager.getSelected();
+            deleteSelected();
+
+        }
 
 
-            if (selected) {
+        /* Space = play/pause */
 
-                sceneManager.removeObject(
-                    selected
-                );
+        else if (
+            event.code === "Space"
+        ) {
+
+            event.preventDefault();
+
+            togglePlayback();
+
+        }
 
 
-                selectionManager.clear();
+        /* Left arrow = previous keyframe */
+
+        else if (
+            event.key === "ArrowLeft"
+        ) {
+
+            timeline.previousKeyframe();
+
+        }
 
 
-                setStatus(
-                    "Object deleted"
-                );
+        /* Right arrow = next keyframe */
 
-            }
+        else if (
+            event.key === "ArrowRight"
+        ) {
+
+            timeline.nextKeyframe();
 
         }
 
@@ -506,61 +553,39 @@ window.addEventListener(
 
 
 /* =========================================================
-   NEW SCENE
+   DELETE
    ========================================================= */
 
-const newScene =
-    document.querySelector(
-        "#newScene"
+function deleteSelected() {
+
+    const object =
+        selectionManager.getSelected();
+
+
+    if (!object)
+        return;
+
+
+    keyframeManager.removeObject(
+        object
     );
 
 
-if (newScene) {
-
-    newScene.addEventListener(
-        "click",
-        () => {
-
-            sceneManager.clearObjects();
-
-            selectionManager.clear();
-
-            cameraManager.reset();
+    boneManager.removeModel(
+        object
+    );
 
 
-            currentTime =
-                0;
-
-            playing =
-                false;
+    sceneManager.removeObject(
+        object
+    );
 
 
-            if (timeline) {
-
-                timeline.value =
-                    "0";
-
-            }
+    selectionManager.clear();
 
 
-            if (timeLabel) {
-
-                timeLabel.textContent =
-                    "0.00s";
-
-            }
-
-
-            refreshOutliner();
-
-            propertiesManager.refresh();
-
-
-            setStatus(
-                "New scene"
-            );
-
-        }
+    setStatus(
+        "Object deleted"
     );
 
 }
@@ -654,19 +679,61 @@ if (modelInput) {
                     );
 
 
-                    selectionManager.select(
-                        model
+                    /*
+                     * If this model contains
+                     * bones, register it.
+                     */
+
+                    const bones = [];
+
+                    model.traverse(
+                        object => {
+
+                            if (
+                                object.isBone
+                            ) {
+
+                                bones.push(
+                                    object
+                                );
+
+                            }
+
+                        }
                     );
 
 
-                    setStatus(
-                        `Imported ${file.name}`
+                    if (
+                        bones.length > 0
+                    ) {
+
+                        boneManager.registerModel(
+                            model
+                        );
+
+                        setStatus(
+                            `Imported rigged model: ${name}`
+                        );
+
+                    }
+                    else {
+
+                        setStatus(
+                            `Imported ${name}`
+                        );
+
+                    }
+
+
+                    selectionManager.select(
+                        model
                     );
 
 
                     URL.revokeObjectURL(
                         url
                     );
+
 
                     modelInput.value =
                         "";
@@ -692,6 +759,7 @@ if (modelInput) {
                         url
                     );
 
+
                     modelInput.value =
                         "";
 
@@ -706,28 +774,137 @@ if (modelInput) {
 
 
 /* =========================================================
-   TIMELINE
+   KEYFRAME HELPERS
    ========================================================= */
 
-if (timeline) {
+function createTransformKeyframes() {
 
-    timeline.addEventListener(
-        "input",
+    const object =
+        selectionManager.getSelected();
+
+
+    if (!object) {
+
+        setStatus(
+            "Select an object first"
+        );
+
+        return;
+
+    }
+
+
+    const time =
+        timeline.getTime();
+
+
+    keyframeManager.addKeyframe(
+        object,
+        "position",
+        time,
+        object.position.toArray()
+    );
+
+
+    keyframeManager.addKeyframe(
+        object,
+        "rotation",
+        time,
+        [
+            object.rotation.x,
+            object.rotation.y,
+            object.rotation.z
+        ]
+    );
+
+
+    keyframeManager.addKeyframe(
+        object,
+        "scale",
+        time,
+        object.scale.toArray()
+    );
+
+
+    setStatus(
+        `Keyframe added at ${time.toFixed(2)}s`
+    );
+
+}
+
+
+/* =========================================================
+   KEYFRAME BUTTON
+   ========================================================= */
+
+const addKeyframe =
+    document.querySelector(
+        "#addKeyframe"
+    );
+
+
+if (addKeyframe) {
+
+    addKeyframe.addEventListener(
+        "click",
+        createTransformKeyframes
+    );
+
+}
+
+
+/* =========================================================
+   DELETE KEYFRAME
+   ========================================================= */
+
+const deleteKeyframe =
+    document.querySelector(
+        "#deleteKeyframe"
+    );
+
+
+if (deleteKeyframe) {
+
+    deleteKeyframe.addEventListener(
+        "click",
         () => {
 
-            currentTime =
-                Number(
-                    timeline.value
-                );
+            const object =
+                selectionManager.getSelected();
 
 
-            if (timeLabel) {
+            if (!object)
+                return;
 
-                timeLabel.textContent =
-                    currentTime.toFixed(2) +
-                    "s";
 
-            }
+            const time =
+                timeline.getTime();
+
+
+            keyframeManager.removeKeyframe(
+                object,
+                "position",
+                time
+            );
+
+
+            keyframeManager.removeKeyframe(
+                object,
+                "rotation",
+                time
+            );
+
+
+            keyframeManager.removeKeyframe(
+                object,
+                "scale",
+                time
+            );
+
+
+            setStatus(
+                `Keyframe removed at ${time.toFixed(2)}s`
+            );
 
         }
     );
@@ -736,8 +913,34 @@ if (timeline) {
 
 
 /* =========================================================
-   PLAY
+   PLAY / PAUSE
    ========================================================= */
+
+function togglePlayback() {
+
+    if (
+        animator.isPlaying()
+    ) {
+
+        animator.pause();
+
+        setStatus(
+            "Paused"
+        );
+
+    }
+    else {
+
+        animator.play();
+
+        setStatus(
+            "Playing"
+        );
+
+    }
+
+}
+
 
 const play =
     document.querySelector(
@@ -751,9 +954,7 @@ if (play) {
         "click",
         () => {
 
-            playing =
-                true;
-
+            animator.play();
 
             setStatus(
                 "Playing"
@@ -764,10 +965,6 @@ if (play) {
 
 }
 
-
-/* =========================================================
-   PAUSE
-   ========================================================= */
 
 const pause =
     document.querySelector(
@@ -781,9 +978,7 @@ if (pause) {
         "click",
         () => {
 
-            playing =
-                false;
-
+            animator.pause();
 
             setStatus(
                 "Paused"
@@ -794,10 +989,6 @@ if (pause) {
 
 }
 
-
-/* =========================================================
-   STOP
-   ========================================================= */
 
 const stop =
     document.querySelector(
@@ -811,31 +1002,112 @@ if (stop) {
         "click",
         () => {
 
-            playing =
-                false;
+            animator.stop();
 
-            currentTime =
-                0;
-
-
-            if (timeline) {
-
-                timeline.value =
-                    "0";
-
-            }
-
-
-            if (timeLabel) {
-
-                timeLabel.textContent =
-                    "0.00s";
-
-            }
-
+            timeline.setTime(
+                0,
+                false
+            );
 
             setStatus(
                 "Stopped"
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   TIMELINE CALLBACK
+   ========================================================= */
+
+timeline.onTimeChange(
+    time => {
+
+        currentTime =
+            time;
+
+
+        if (timeLabel) {
+
+            timeLabel.textContent =
+                time.toFixed(2) +
+                "s";
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   TIMELINE DURATION
+   ========================================================= */
+
+const durationInput =
+    document.querySelector(
+        "#duration"
+    );
+
+
+if (durationInput) {
+
+    durationInput.addEventListener(
+        "change",
+        () => {
+
+            timeline.setDuration(
+                Number(
+                    durationInput.value
+                )
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   NEW SCENE
+   ========================================================= */
+
+const newScene =
+    document.querySelector(
+        "#newScene"
+    );
+
+
+if (newScene) {
+
+    newScene.addEventListener(
+        "click",
+        () => {
+
+            animator.stop();
+
+            keyframeManager.clear();
+
+            boneManager.clear();
+
+            sceneManager.clearObjects();
+
+            selectionManager.clear();
+
+            cameraManager.reset();
+
+            timeline.clear();
+
+
+            refreshOutliner();
+
+            propertiesManager.refresh();
+
+
+            setStatus(
+                "New scene"
             );
 
         }
@@ -862,10 +1134,6 @@ if (saveScene) {
 
             try {
 
-                const data =
-                    serializeScene();
-
-
                 if (
                     typeof puter ===
                     "undefined"
@@ -876,6 +1144,10 @@ if (saveScene) {
                     );
 
                 }
+
+
+                const data =
+                    serializeScene();
 
 
                 await puter.fs.write(
@@ -988,7 +1260,7 @@ if (loadScene) {
 
 
 /* =========================================================
-   SERIALIZE SCENE
+   SERIALIZE
    ========================================================= */
 
 function serializeScene() {
@@ -996,12 +1268,12 @@ function serializeScene() {
     return {
 
         version:
-            3,
+            4,
 
 
         camera:
             typeof cameraManager.serialize ===
-                "function"
+            "function"
                 ? cameraManager.serialize()
                 : null,
 
@@ -1009,6 +1281,9 @@ function serializeScene() {
         objects:
             sceneManager.objects.map(
                 object => ({
+
+                    uuid:
+                        object.uuid,
 
                     name:
                         object.name,
@@ -1031,7 +1306,11 @@ function serializeScene() {
                         object.scale.toArray()
 
                 })
-            )
+            ),
+
+
+        keyframes:
+            keyframeManager.serialize()
 
     };
 
@@ -1039,12 +1318,18 @@ function serializeScene() {
 
 
 /* =========================================================
-   RESTORE SCENE
+   RESTORE
    ========================================================= */
 
 function restoreScene(
     data
 ) {
+
+    animator.stop();
+
+    keyframeManager.clear();
+
+    boneManager.clear();
 
     sceneManager.clearObjects();
 
@@ -1052,10 +1337,9 @@ function restoreScene(
 
 
     if (
-        data &&
-        data.camera &&
+        data?.camera &&
         typeof cameraManager.restore ===
-            "function"
+        "function"
     ) {
 
         cameraManager.restore(
@@ -1063,6 +1347,10 @@ function restoreScene(
         );
 
     }
+
+
+    const uuidMap =
+        new Map();
 
 
     for (
@@ -1087,43 +1375,97 @@ function restoreScene(
             );
 
 
-        if (
-            Array.isArray(
-                objectData.position
-            )
+        object.position.fromArray(
+            objectData.position ||
+            [0, 0, 0]
+        );
+
+
+        object.rotation.set(
+            objectData.rotation?.[0] || 0,
+            objectData.rotation?.[1] || 0,
+            objectData.rotation?.[2] || 0
+        );
+
+
+        object.scale.fromArray(
+            objectData.scale ||
+            [1, 1, 1]
+        );
+
+
+        uuidMap.set(
+            objectData.uuid,
+            object
+        );
+
+    }
+
+
+    /*
+     * Keyframes use UUIDs.
+     *
+     * Since loaded objects receive
+     * new UUIDs, rebuild the
+     * keyframe data using the
+     * saved object order.
+     */
+
+    if (
+        data?.keyframes
+    ) {
+
+        const savedObjects =
+            data.objects || [];
+
+
+        for (
+            const savedObject
+            of savedObjects
         ) {
 
-            object.position.fromArray(
-                objectData.position
-            );
-
-        }
-
-
-        if (
-            Array.isArray(
-                objectData.rotation
-            )
-        ) {
-
-            object.rotation.set(
-                objectData.rotation[0] || 0,
-                objectData.rotation[1] || 0,
-                objectData.rotation[2] || 0
-            );
-
-        }
+            const object =
+                uuidMap.get(
+                    savedObject.uuid
+                );
 
 
-        if (
-            Array.isArray(
-                objectData.scale
-            )
-        ) {
+            if (!object)
+                continue;
 
-            object.scale.fromArray(
-                objectData.scale
-            );
+
+            const tracks =
+                data.keyframes[
+                    savedObject.uuid
+                ];
+
+
+            if (!tracks)
+                continue;
+
+
+            for (
+                const property
+                of Object.keys(
+                    tracks
+                )
+            ) {
+
+                for (
+                    const keyframe
+                    of tracks[property]
+                ) {
+
+                    keyframeManager.addKeyframe(
+                        object,
+                        property,
+                        keyframe.time,
+                        keyframe.value
+                    );
+
+                }
+
+            }
 
         }
 
@@ -1133,6 +1475,19 @@ function restoreScene(
     refreshOutliner();
 
     propertiesManager.refresh();
+
+
+    const firstObject =
+        sceneManager.objects[0];
+
+
+    if (firstObject) {
+
+        selectionManager.select(
+            firstObject
+        );
+
+    }
 
 }
 
@@ -1262,11 +1617,7 @@ if (aiButton) {
         "click",
         () => {
 
-            if (aiPrompt) {
-
-                aiPrompt.focus();
-
-            }
+            aiPrompt?.focus();
 
         }
     );
@@ -1292,56 +1643,22 @@ function animate(
 
 
     const delta =
-        (now - lastTime) /
-        1000;
+        Math.min(
+            (now - lastTime) / 1000,
+            0.1
+        );
 
 
     lastTime =
         now;
 
 
-    if (playing) {
-
-        currentTime +=
-            delta;
-
-
-        const duration =
-            Number(
-                timeline?.max || 10
-            );
+    animator.update(
+        delta
+    );
 
 
-        if (
-            currentTime >
-            duration
-        ) {
-
-            currentTime =
-                0;
-
-        }
-
-
-        if (timeline) {
-
-            timeline.value =
-                String(
-                    currentTime
-                );
-
-        }
-
-
-        if (timeLabel) {
-
-            timeLabel.textContent =
-                currentTime.toFixed(2) +
-                "s";
-
-        }
-
-    }
+    timeline.update();
 
 
     cameraManager.update();
@@ -1352,7 +1669,7 @@ function animate(
 
 
 /* =========================================================
-   STARTUP
+   INITIAL SCENE
    ========================================================= */
 
 const firstCube =
@@ -1369,6 +1686,11 @@ firstCube.position.set(
 
 
 selectionManager.select(
+    firstCube
+);
+
+
+timeline.setSelectedObject(
     firstCube
 );
 
