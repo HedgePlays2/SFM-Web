@@ -1,22 +1,51 @@
 // editor/gizmos.js
-// SFM-Web transform gizmo system
+// SFM-Web Transform Gizmos
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import { TransformControls } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/TransformControls.js";
 
+
 export class GizmoManager {
 
     constructor(
+        scene,
         camera,
         renderer,
         cameraManager,
         selectionManager
     ) {
 
-        this.camera = camera;
-        this.renderer = renderer;
-        this.cameraManager = cameraManager;
-        this.selectionManager = selectionManager;
+        this.scene =
+            scene;
+
+        this.camera =
+            camera;
+
+        this.renderer =
+            renderer;
+
+        this.cameraManager =
+            cameraManager;
+
+        this.selectionManager =
+            selectionManager;
+
+
+        this.mode =
+            "translate";
+
+
+        this.enabled =
+            true;
+
+
+        this.objectChangedCallback =
+            null;
+
+
+        // =================================================
+        // TransformControls
+        // =================================================
 
         this.controls =
             new TransformControls(
@@ -24,37 +53,57 @@ export class GizmoManager {
                 renderer.domElement
             );
 
+
         this.controls.setMode(
-            "translate"
+            this.mode
         );
 
-        this.controls.setSpace(
-            "world"
-        );
 
         this.controls.setSize(
             0.9
         );
 
+
+        this.scene.add(
+            this.controls.getHelper()
+        );
+
+
+        // =================================================
+        // Events
+        // =================================================
+
         this.controls.addEventListener(
             "dragging-changed",
             event => {
 
-                this.cameraManager.controls.enabled =
-                    !event.value;
+                /*
+                 * Disable editor camera controls while
+                 * dragging a gizmo.
+                 */
+
+                if (
+                    this.cameraManager
+                ) {
+
+                    this.cameraManager.enabled =
+                        !event.value;
+
+                }
 
             }
         );
 
+
         this.controls.addEventListener(
-            "objectChange",
+            "change",
             () => {
 
                 if (
-                    this.onObjectChanged
+                    this.objectChangedCallback
                 ) {
 
-                    this.onObjectChanged(
+                    this.objectChangedCallback(
                         this.controls.object
                     );
 
@@ -63,73 +112,53 @@ export class GizmoManager {
             }
         );
 
-        this.selectionUnsubscribe =
-            this.selectionManager.onSelectionChanged(
-                object => {
 
-                    this.attach(
-                        object
-                    );
+        // =================================================
+        // Selection listener
+        // =================================================
 
-                }
-            );
+        this.selectionManager.onSelectionChanged(
+            object => {
 
-        this.renderer.domElement.parentElement.appendChild(
-            this.controls.domElement
+                this.attach(
+                    object
+                );
+
+            }
         );
-    }
-
-
-    // =========================================
-    // Attach to selected object
-    // =========================================
-
-    attach(
-        object
-    ) {
-
-        if (!object) {
-
-            this.controls.detach();
-
-            return;
-
-        }
-
-        this.controls.attach(
-            object
-        );
-    }
-
-
-    // =========================================
-    // Detach
-    // =========================================
-
-    detach() {
-
-        this.controls.detach();
 
     }
 
 
-    // =========================================
+    // =====================================================
     // Set transform mode
-    // =========================================
+    // =====================================================
 
     setMode(
         mode
     ) {
 
+        const allowed = [
+            "translate",
+            "rotate",
+            "scale"
+        ];
+
+
         if (
-            mode !== "translate" &&
-            mode !== "rotate" &&
-            mode !== "scale"
+            !allowed.includes(
+                mode
+            )
         ) {
 
             return;
 
         }
+
+
+        this.mode =
+            mode;
+
 
         this.controls.setMode(
             mode
@@ -138,20 +167,121 @@ export class GizmoManager {
     }
 
 
-    // =========================================
-    // Get mode
-    // =========================================
+    // =====================================================
+    // Get current mode
+    // =====================================================
 
     getMode() {
 
-        return this.controls.getMode();
+        return this.mode;
 
     }
 
 
-    // =========================================
-    // Toggle world/local space
-    // =========================================
+    // =====================================================
+    // Attach to object
+    // =====================================================
+
+    attach(
+        object
+    ) {
+
+        if (
+            !this.enabled
+        ) {
+
+            return;
+
+        }
+
+
+        if (!object) {
+
+            this.detach();
+
+            return;
+
+        }
+
+
+        /*
+         * Lights, meshes, models and groups can
+         * all be manipulated.
+         */
+
+        this.controls.attach(
+            object
+        );
+
+
+        this.controls.setMode(
+            this.mode
+        );
+
+    }
+
+
+    // =====================================================
+    // Detach
+    // =====================================================
+
+    detach() {
+
+        this.controls.detach();
+
+    }
+
+
+    // =====================================================
+    // Enable
+    // =====================================================
+
+    setEnabled(
+        enabled
+    ) {
+
+        this.enabled =
+            Boolean(
+                enabled
+            );
+
+
+        this.controls.enabled =
+            this.enabled;
+
+
+        if (
+            !this.enabled
+        ) {
+
+            this.detach();
+
+        }
+        else {
+
+            this.attach(
+                this.selectionManager.getSelected()
+            );
+
+        }
+
+    }
+
+
+    // =====================================================
+    // Is enabled
+    // =====================================================
+
+    isEnabled() {
+
+        return this.enabled;
+
+    }
+
+
+    // =====================================================
+    // Space
+    // =====================================================
 
     setSpace(
         space
@@ -166,6 +296,7 @@ export class GizmoManager {
 
         }
 
+
         this.controls.setSpace(
             space
         );
@@ -173,23 +304,20 @@ export class GizmoManager {
     }
 
 
-    // =========================================
-    // Toggle visibility
-    // =========================================
+    // =====================================================
+    // Get space
+    // =====================================================
 
-    setVisible(
-        visible
-    ) {
+    getSpace() {
 
-        this.controls.visible =
-            visible;
+        return this.controls.space;
 
     }
 
 
-    // =========================================
-    // Change gizmo size
-    // =========================================
+    // =====================================================
+    // Size
+    // =====================================================
 
     setSize(
         size
@@ -205,35 +333,210 @@ export class GizmoManager {
     }
 
 
-    // =========================================
+    // =====================================================
+    // Snapping
+    // =====================================================
+
+    setTranslationSnap(
+        value
+    ) {
+
+        if (
+            value === null ||
+            value === undefined ||
+            value <= 0
+        ) {
+
+            this.controls.setTranslationSnap(
+                null
+            );
+
+            return;
+
+        }
+
+
+        this.controls.setTranslationSnap(
+            value
+        );
+
+    }
+
+
+    setRotationSnap(
+        value
+    ) {
+
+        if (
+            value === null ||
+            value === undefined ||
+            value <= 0
+        ) {
+
+            this.controls.setRotationSnap(
+                null
+            );
+
+            return;
+
+        }
+
+
+        this.controls.setRotationSnap(
+            THREE.MathUtils.degToRad(
+                value
+            )
+        );
+
+    }
+
+
+    setScaleSnap(
+        value
+    ) {
+
+        if (
+            value === null ||
+            value === undefined ||
+            value <= 0
+        ) {
+
+            this.controls.setScaleSnap(
+                null
+            );
+
+            return;
+
+        }
+
+
+        this.controls.setScaleSnap(
+            value
+        );
+
+    }
+
+
+    // =====================================================
+    // Reset transform
+    // =====================================================
+
+    resetTransform() {
+
+        const object =
+            this.selectionManager.getSelected();
+
+
+        if (!object)
+            return;
+
+
+        object.position.set(
+            0,
+            0,
+            0
+        );
+
+
+        object.rotation.set(
+            0,
+            0,
+            0
+        );
+
+
+        object.scale.set(
+            1,
+            1,
+            1
+        );
+
+
+        if (
+            this.objectChangedCallback
+        ) {
+
+            this.objectChangedCallback(
+                object
+            );
+
+        }
+
+    }
+
+
+    // =====================================================
+    // Focus selected object
+    // =====================================================
+
+    focusSelected() {
+
+        const object =
+            this.selectionManager.getSelected();
+
+
+        if (
+            object &&
+            this.cameraManager
+        ) {
+
+            this.cameraManager.focusObject(
+                object
+            );
+
+        }
+
+    }
+
+
+    // =====================================================
     // Object changed callback
-    // =========================================
+    // =====================================================
 
     setObjectChangedCallback(
         callback
     ) {
 
-        this.onObjectChanged =
-            typeof callback === "function"
+        this.objectChangedCallback =
+            typeof callback ===
+            "function"
                 ? callback
                 : null;
 
     }
 
 
-    // =========================================
+    // =====================================================
+    // Get selected object
+    // =====================================================
+
+    getObject() {
+
+        return this.controls.object ||
+            null;
+
+    }
+
+
+    // =====================================================
     // Dispose
-    // =========================================
+    // =====================================================
 
     dispose() {
 
+        this.detach();
+
+
         if (
-            this.selectionUnsubscribe
+            this.controls.getHelper()
         ) {
 
-            this.selectionUnsubscribe();
+            this.scene.remove(
+                this.controls.getHelper()
+            );
 
         }
+
 
         this.controls.dispose();
 
