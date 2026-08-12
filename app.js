@@ -6,74 +6,54 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/
 
 import { SceneManager } from "./editor/scene.js";
 import { CameraManager } from "./editor/camera.js";
+import { SelectionManager } from "./editor/selection.js";
 
 
 /* =========================================================
    DOM
    ========================================================= */
 
-const viewport =
-    document.querySelector("#viewport");
+const viewport = document.querySelector("#viewport");
+const status = document.querySelector("#status");
+const outliner = document.querySelector("#outliner");
+const properties = document.querySelector("#properties");
+const timeline = document.querySelector("#timeline");
+const timeLabel = document.querySelector("#timeLabel");
 
-const status =
-    document.querySelector("#status");
-
-const outliner =
-    document.querySelector("#outliner");
-
-const properties =
-    document.querySelector("#properties");
-
-const timeline =
-    document.querySelector("#timeline");
-
-const timeLabel =
-    document.querySelector("#timeLabel");
-
-const aiPrompt =
-    document.querySelector("#aiPrompt");
-
-const aiOutput =
-    document.querySelector("#aiOutput");
+const aiPrompt = document.querySelector("#aiPrompt");
+const aiOutput = document.querySelector("#aiOutput");
 
 
 /* =========================================================
-   CORE SYSTEMS
+   CORE
    ========================================================= */
 
-const sceneManager =
-    new SceneManager(
-        viewport
-    );
+if (!viewport) {
+    throw new Error("Missing #viewport element in index.html");
+}
 
-const scene =
-    sceneManager.scene;
+const sceneManager = new SceneManager(viewport);
 
-const camera =
-    sceneManager.camera;
+const scene = sceneManager.scene;
+const camera = sceneManager.camera;
+const renderer = sceneManager.renderer;
 
-const renderer =
-    sceneManager.renderer;
+const cameraManager = new CameraManager(
+    camera,
+    renderer
+);
 
-
-const cameraManager =
-    new CameraManager(
-        camera,
-        renderer
-    );
+const selectionManager = new SelectionManager(
+    sceneManager
+);
 
 
 /* =========================================================
-   EDITOR STATE
+   STATE
    ========================================================= */
 
-let selected = null;
-
-let currentTool =
-    "translate";
-
+let currentTool = "translate";
 let playing = false;
-
 let currentTime = 0;
 
 
@@ -81,15 +61,31 @@ let currentTime = 0;
    SELECTION
    ========================================================= */
 
-function selectObject(
-    object
-) {
+selectionManager.onSelectionChanged(
+    object => {
 
-    selected = object;
+        refreshOutliner();
+        renderProperties();
 
-    refreshOutliner();
+        if (object) {
 
-    renderProperties();
+            status.textContent =
+                `Selected: ${object.name}`;
+
+        } else {
+
+            status.textContent =
+                "Nothing selected";
+
+        }
+    }
+);
+
+
+function getSelected() {
+
+    return selectionManager.getSelected();
+
 }
 
 
@@ -99,6 +95,9 @@ function selectObject(
 
 function refreshOutliner() {
 
+    if (!outliner)
+        return;
+
     outliner.innerHTML = "";
 
     for (
@@ -107,15 +106,15 @@ function refreshOutliner() {
     ) {
 
         const row =
-            document.createElement(
-                "div"
-            );
+            document.createElement("div");
 
         row.className =
             "tree-item";
 
         if (
-            object === selected
+            selectionManager.isSelected(
+                object
+            )
         ) {
 
             row.classList.add(
@@ -127,11 +126,16 @@ function refreshOutliner() {
         row.textContent =
             object.name;
 
-        row.onclick =
-            () =>
-                selectObject(
+        row.addEventListener(
+            "click",
+            () => {
+
+                selectionManager.select(
                     object
                 );
+
+            }
+        );
 
         outliner.appendChild(
             row
@@ -145,6 +149,13 @@ function refreshOutliner() {
    ========================================================= */
 
 function renderProperties() {
+
+    if (!properties)
+        return;
+
+    const selected =
+        getSelected();
+
 
     if (!selected) {
 
@@ -175,23 +186,24 @@ function renderProperties() {
 
             <label>Position</label>
 
-            <input
-                id="posX"
-                placeholder="X"
-                value="${selected.position.x.toFixed(2)}"
-            >
+            <div class="vector-input">
 
-            <input
-                id="posY"
-                placeholder="Y"
-                value="${selected.position.y.toFixed(2)}"
-            >
+                <input
+                    id="posX"
+                    value="${selected.position.x.toFixed(2)}"
+                >
 
-            <input
-                id="posZ"
-                placeholder="Z"
-                value="${selected.position.z.toFixed(2)}"
-            >
+                <input
+                    id="posY"
+                    value="${selected.position.y.toFixed(2)}"
+                >
+
+                <input
+                    id="posZ"
+                    value="${selected.position.z.toFixed(2)}"
+                >
+
+            </div>
 
         </div>
 
@@ -200,29 +212,30 @@ function renderProperties() {
 
             <label>Rotation</label>
 
-            <input
-                id="rotX"
-                placeholder="X"
-                value="${THREE.MathUtils.radToDeg(
-                    selected.rotation.x
-                ).toFixed(1)}"
-            >
+            <div class="vector-input">
 
-            <input
-                id="rotY"
-                placeholder="Y"
-                value="${THREE.MathUtils.radToDeg(
-                    selected.rotation.y
-                ).toFixed(1)}"
-            >
+                <input
+                    id="rotX"
+                    value="${THREE.MathUtils.radToDeg(
+                        selected.rotation.x
+                    ).toFixed(1)}"
+                >
 
-            <input
-                id="rotZ"
-                placeholder="Z"
-                value="${THREE.MathUtils.radToDeg(
-                    selected.rotation.z
-                ).toFixed(1)}"
-            >
+                <input
+                    id="rotY"
+                    value="${THREE.MathUtils.radToDeg(
+                        selected.rotation.y
+                    ).toFixed(1)}"
+                >
+
+                <input
+                    id="rotZ"
+                    value="${THREE.MathUtils.radToDeg(
+                        selected.rotation.z
+                    ).toFixed(1)}"
+                >
+
+            </div>
 
         </div>
 
@@ -231,23 +244,24 @@ function renderProperties() {
 
             <label>Scale</label>
 
-            <input
-                id="scaleX"
-                placeholder="X"
-                value="${selected.scale.x.toFixed(2)}"
-            >
+            <div class="vector-input">
 
-            <input
-                id="scaleY"
-                placeholder="Y"
-                value="${selected.scale.y.toFixed(2)}"
-            >
+                <input
+                    id="scaleX"
+                    value="${selected.scale.x.toFixed(2)}"
+                >
 
-            <input
-                id="scaleZ"
-                placeholder="Z"
-                value="${selected.scale.z.toFixed(2)}"
-            >
+                <input
+                    id="scaleY"
+                    value="${selected.scale.y.toFixed(2)}"
+                >
+
+                <input
+                    id="scaleZ"
+                    value="${selected.scale.z.toFixed(2)}"
+                >
+
+            </div>
 
         </div>
 
@@ -266,143 +280,145 @@ function renderProperties() {
         >
             Delete Object
         </button>
-
     `;
 
 
-    /* -----------------------------------------
-       NAME
-       ----------------------------------------- */
+    bindNumber(
+        "#posX",
+        value => {
+            selected.position.x = value;
+        }
+    );
 
-    document.querySelector(
-        "#propName"
-    ).addEventListener(
-        "change",
-        event => {
+    bindNumber(
+        "#posY",
+        value => {
+            selected.position.y = value;
+        }
+    );
 
-            selected.name =
-                event.target.value ||
-                "Object";
+    bindNumber(
+        "#posZ",
+        value => {
+            selected.position.z = value;
+        }
+    );
 
-            refreshOutliner();
+
+    bindNumber(
+        "#rotX",
+        value => {
+
+            selected.rotation.x =
+                THREE.MathUtils.degToRad(
+                    value
+                );
+
+        }
+    );
+
+    bindNumber(
+        "#rotY",
+        value => {
+
+            selected.rotation.y =
+                THREE.MathUtils.degToRad(
+                    value
+                );
+
+        }
+    );
+
+    bindNumber(
+        "#rotZ",
+        value => {
+
+            selected.rotation.z =
+                THREE.MathUtils.degToRad(
+                    value
+                );
 
         }
     );
 
 
-    /* -----------------------------------------
-       POSITION
-       ----------------------------------------- */
-
-    bindNumber(
-        "#posX",
-        value =>
-            selected.position.x =
-                value
-    );
-
-    bindNumber(
-        "#posY",
-        value =>
-            selected.position.y =
-                value
-    );
-
-    bindNumber(
-        "#posZ",
-        value =>
-            selected.position.z =
-                value
-    );
-
-
-    /* -----------------------------------------
-       ROTATION
-       ----------------------------------------- */
-
-    bindNumber(
-        "#rotX",
-        value =>
-            selected.rotation.x =
-                THREE.MathUtils.degToRad(
-                    value
-                )
-    );
-
-    bindNumber(
-        "#rotY",
-        value =>
-            selected.rotation.y =
-                THREE.MathUtils.degToRad(
-                    value
-                )
-    );
-
-    bindNumber(
-        "#rotZ",
-        value =>
-            selected.rotation.z =
-                THREE.MathUtils.degToRad(
-                    value
-                )
-    );
-
-
-    /* -----------------------------------------
-       SCALE
-       ----------------------------------------- */
-
     bindNumber(
         "#scaleX",
-        value =>
-            selected.scale.x =
-                value
+        value => {
+            selected.scale.x = value;
+        }
     );
 
     bindNumber(
         "#scaleY",
-        value =>
-            selected.scale.y =
-                value
+        value => {
+            selected.scale.y = value;
+        }
     );
 
     bindNumber(
         "#scaleZ",
-        value =>
-            selected.scale.z =
-                value
+        value => {
+            selected.scale.z = value;
+        }
     );
 
 
-    /* -----------------------------------------
-       FOCUS
-       ----------------------------------------- */
+    const nameInput =
+        document.querySelector(
+            "#propName"
+        );
 
-    document.querySelector(
-        "#focusObject"
-    ).onclick =
-        () => {
+    if (nameInput) {
 
-            cameraManager.focusObject(
-                selected
-            );
+        nameInput.addEventListener(
+            "change",
+            event => {
 
-        };
+                selected.name =
+                    event.target.value ||
+                    "Object";
+
+                refreshOutliner();
+
+            }
+        );
+    }
 
 
-    /* -----------------------------------------
-       DELETE
-       ----------------------------------------- */
+    const focusButton =
+        document.querySelector(
+            "#focusObject"
+        );
 
-    document.querySelector(
-        "#deleteObject"
-    ).onclick =
-        deleteSelectedObject;
+    if (focusButton) {
+
+        focusButton.onclick =
+            () => {
+
+                cameraManager.focusObject(
+                    selected
+                );
+
+            };
+    }
+
+
+    const deleteButton =
+        document.querySelector(
+            "#deleteObject"
+        );
+
+    if (deleteButton) {
+
+        deleteButton.onclick =
+            deleteSelectedObject;
+    }
 }
 
 
 /* =========================================================
-   PROPERTY HELPER
+   NUMBER INPUT
    ========================================================= */
 
 function bindNumber(
@@ -434,35 +450,32 @@ function bindNumber(
                 )
             ) {
 
-                callback(
-                    value
-                );
+                callback(value);
 
             }
-
         }
     );
 }
 
 
 /* =========================================================
-   DELETE OBJECT
+   DELETE
    ========================================================= */
 
 function deleteSelectedObject() {
 
+    const selected =
+        getSelected();
+
     if (!selected)
         return;
+
 
     sceneManager.removeObject(
         selected
     );
 
-    selected = null;
-
-    refreshOutliner();
-
-    renderProperties();
+    selectionManager.clear();
 
     status.textContent =
         "Object deleted";
@@ -470,16 +483,14 @@ function deleteSelectedObject() {
 
 
 /* =========================================================
-   HTML ESCAPE
+   ESCAPE HTML
    ========================================================= */
 
 function escapeHTML(
     value
 ) {
 
-    return String(
-        value
-    ).replace(
+    return String(value).replace(
         /[&<>"']/g,
         character => {
 
@@ -505,14 +516,14 @@ function escapeHTML(
    ADD CUBE
    ========================================================= */
 
-const addCubeButton =
+const addCube =
     document.querySelector(
         "#addCube"
     );
 
-if (addCubeButton) {
+if (addCube) {
 
-    addCubeButton.onclick =
+    addCube.onclick =
         () => {
 
             const cube =
@@ -520,7 +531,7 @@ if (addCubeButton) {
                     "Cube"
                 );
 
-            selectObject(
+            selectionManager.select(
                 cube
             );
 
@@ -534,14 +545,14 @@ if (addCubeButton) {
    ADD LIGHT
    ========================================================= */
 
-const addLightButton =
+const addLight =
     document.querySelector(
         "#addLight"
     );
 
-if (addLightButton) {
+if (addLight) {
 
-    addLightButton.onclick =
+    addLight.onclick =
         () => {
 
             const light =
@@ -549,7 +560,7 @@ if (addLightButton) {
                     "Light"
                 );
 
-            selectObject(
+            selectionManager.select(
                 light
             );
 
@@ -560,7 +571,7 @@ if (addLightButton) {
 
 
 /* =========================================================
-   EDITOR TOOLS
+   TOOLS
    ========================================================= */
 
 document
@@ -570,16 +581,19 @@ document
     .forEach(
         button => {
 
-            button.onclick =
+            button.addEventListener(
+                "click",
                 () => {
 
                     currentTool =
                         button.dataset.tool;
 
                     status.textContent =
-                        "Tool: " +
-                        currentTool;
-                };
+                        `Tool: ${currentTool}`;
+
+                }
+            );
+
         }
     );
 
@@ -588,26 +602,36 @@ document
    NEW SCENE
    ========================================================= */
 
-const newSceneButton =
+const newScene =
     document.querySelector(
         "#newScene"
     );
 
-if (newSceneButton) {
+if (newScene) {
 
-    newSceneButton.onclick =
+    newScene.onclick =
         () => {
 
             sceneManager.clearObjects();
 
-            selected = null;
+            selectionManager.clear();
 
             currentTime = 0;
 
-            timeline.value = 0;
+            playing = false;
 
-            timeLabel.textContent =
-                "0.00s";
+            if (timeline) {
+                timeline.value = 0;
+            }
+
+            if (timeLabel) {
+
+                timeLabel.textContent =
+                    "0.00s";
+
+            }
+
+            cameraManager.reset();
 
             refreshOutliner();
 
@@ -620,89 +644,6 @@ if (newSceneButton) {
 
 
 /* =========================================================
-   VIEWPORT OBJECT SELECTION
-   ========================================================= */
-
-const raycaster =
-    new THREE.Raycaster();
-
-const mouse =
-    new THREE.Vector2();
-
-
-renderer.domElement.addEventListener(
-    "pointerdown",
-    event => {
-
-        const rect =
-            renderer.domElement
-                .getBoundingClientRect();
-
-
-        mouse.x =
-            (
-                (event.clientX -
-                    rect.left) /
-                rect.width
-            ) * 2 - 1;
-
-
-        mouse.y =
-            -(
-                (event.clientY -
-                    rect.top) /
-                rect.height
-            ) * 2 + 1;
-
-
-        raycaster.setFromCamera(
-            mouse,
-            camera
-        );
-
-
-        const hits =
-            raycaster.intersectObjects(
-                sceneManager.objects,
-                true
-            );
-
-
-        if (!hits.length)
-            return;
-
-
-        let object =
-            hits[0].object;
-
-
-        while (
-            object.parent &&
-            !sceneManager.objects.includes(
-                object
-            )
-        ) {
-
-            object =
-                object.parent;
-        }
-
-
-        if (
-            sceneManager.objects.includes(
-                object
-            )
-        ) {
-
-            selectObject(
-                object
-            );
-        }
-    }
-);
-
-
-/* =========================================================
    MODEL IMPORT
    ========================================================= */
 
@@ -710,7 +651,6 @@ const modelInput =
     document.querySelector(
         "#modelInput"
     );
-
 
 if (modelInput) {
 
@@ -733,6 +673,10 @@ if (modelInput) {
 
             const loader =
                 new GLTFLoader();
+
+
+            status.textContent =
+                `Loading ${file.name}...`;
 
 
             loader.load(
@@ -764,7 +708,9 @@ if (modelInput) {
 
                                 object.receiveShadow =
                                     true;
+
                             }
+
                         }
                     );
 
@@ -782,19 +728,19 @@ if (modelInput) {
                     );
 
 
-                    selectObject(
+                    selectionManager.select(
                         model
                     );
 
 
                     status.textContent =
-                        "Imported " +
-                        file.name;
+                        `Imported ${file.name}`;
 
 
                     URL.revokeObjectURL(
                         url
                     );
+
                 },
 
                 undefined,
@@ -811,6 +757,7 @@ if (modelInput) {
                     URL.revokeObjectURL(
                         url
                     );
+
                 }
             );
         }
@@ -833,10 +780,13 @@ if (timeline) {
                     timeline.value
                 );
 
-            timeLabel.textContent =
-                currentTime.toFixed(
-                    2
-                ) + "s";
+            if (timeLabel) {
+
+                timeLabel.textContent =
+                    currentTime.toFixed(2) +
+                    "s";
+
+            }
         }
     );
 }
@@ -846,20 +796,21 @@ if (timeline) {
    PLAY
    ========================================================= */
 
-const playButton =
+const play =
     document.querySelector(
         "#play"
     );
 
-if (playButton) {
+if (play) {
 
-    playButton.onclick =
+    play.onclick =
         () => {
 
             playing = true;
 
             status.textContent =
                 "Playing";
+
         };
 }
 
@@ -868,43 +819,91 @@ if (playButton) {
    STOP
    ========================================================= */
 
-const stopButton =
+const stop =
     document.querySelector(
         "#stop"
     );
 
-if (stopButton) {
+if (stop) {
 
-    stopButton.onclick =
+    stop.onclick =
         () => {
 
             playing = false;
 
             currentTime = 0;
 
-            timeline.value = 0;
+            if (timeline) {
+                timeline.value = 0;
+            }
 
-            timeLabel.textContent =
-                "0.00s";
+            if (timeLabel) {
+
+                timeLabel.textContent =
+                    "0.00s";
+
+            }
 
             status.textContent =
                 "Stopped";
+
         };
 }
+
+
+/* =========================================================
+   CAMERA FOCUS
+   ========================================================= */
+
+window.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.target.tagName ===
+                "INPUT" ||
+            event.target.tagName ===
+                "TEXTAREA"
+        ) {
+
+            return;
+        }
+
+
+        if (
+            event.key.toLowerCase() ===
+            "f"
+        ) {
+
+            const selected =
+                getSelected();
+
+            if (selected) {
+
+                cameraManager.focusObject(
+                    selected
+                );
+
+                status.textContent =
+                    "Camera focused";
+            }
+        }
+    }
+);
 
 
 /* =========================================================
    PUTER SAVE
    ========================================================= */
 
-const saveButton =
+const saveScene =
     document.querySelector(
         "#saveScene"
     );
 
-if (saveButton) {
+if (saveScene) {
 
-    saveButton.onclick =
+    saveScene.onclick =
         async () => {
 
             try {
@@ -935,6 +934,7 @@ if (saveButton) {
 
                 status.textContent =
                     "Save failed";
+
             }
         };
 }
@@ -944,14 +944,14 @@ if (saveButton) {
    PUTER LOAD
    ========================================================= */
 
-const loadButton =
+const loadScene =
     document.querySelector(
         "#loadScene"
     );
 
-if (loadButton) {
+if (loadScene) {
 
-    loadButton.onclick =
+    loadScene.onclick =
         async () => {
 
             try {
@@ -988,7 +988,8 @@ if (loadButton) {
                 );
 
                 status.textContent =
-                    "No saved project found";
+                    "Could not load project";
+
             }
         };
 }
@@ -1030,6 +1031,7 @@ function serializeScene() {
 
                     scale:
                         object.scale.toArray()
+
                 })
             )
     };
@@ -1046,7 +1048,7 @@ function restoreScene(
 
     sceneManager.clearObjects();
 
-    selected = null;
+    selectionManager.clear();
 
 
     if (data.camera) {
@@ -1054,6 +1056,7 @@ function restoreScene(
         cameraManager.restore(
             data.camera
         );
+
     }
 
 
@@ -1083,6 +1086,7 @@ function restoreScene(
                 object.position.fromArray(
                     objectData.position
                 );
+
             }
 
 
@@ -1095,6 +1099,7 @@ function restoreScene(
                 object.rotation.fromArray(
                     objectData.rotation
                 );
+
             }
 
 
@@ -1107,7 +1112,9 @@ function restoreScene(
                 object.scale.fromArray(
                     objectData.scale
                 );
+
             }
+
         }
     }
 
@@ -1122,18 +1129,18 @@ function restoreScene(
    PUTER AI
    ========================================================= */
 
-const askAIButton =
+const askAI =
     document.querySelector(
         "#askAI"
     );
 
 if (
-    askAIButton &&
+    askAI &&
     aiPrompt &&
     aiOutput
 ) {
 
-    askAIButton.onclick =
+    askAI.onclick =
         async () => {
 
             const prompt =
@@ -1157,7 +1164,7 @@ if (
 inside SFM-Web, a browser-based
 Source Filmmaker-style editor.
 
-Help the user with:
+Help with:
 
 - filmmaking
 - camera composition
@@ -1193,6 +1200,7 @@ ${prompt}`,
                 aiOutput.textContent =
                     "AI error: " +
                     error.message;
+
             }
         };
 }
@@ -1222,45 +1230,6 @@ if (aiButton) {
 
 
 /* =========================================================
-   FOCUS SELECTED OBJECT
-   ========================================================= */
-
-window.addEventListener(
-    "keydown",
-    event => {
-
-        // Don't steal F from text inputs.
-        if (
-            event.target.tagName ===
-                "INPUT" ||
-            event.target.tagName ===
-                "TEXTAREA"
-        ) {
-
-            return;
-        }
-
-
-        if (
-            event.key.toLowerCase() ===
-            "f"
-        ) {
-
-            if (selected) {
-
-                cameraManager.focusObject(
-                    selected
-                );
-
-                status.textContent =
-                    "Camera focused";
-            }
-        }
-    }
-);
-
-
-/* =========================================================
    ANIMATION LOOP
    ========================================================= */
 
@@ -1278,11 +1247,11 @@ function animate(
 
 
     const delta =
-        (now - lastTime) /
-        1000;
+        (now - lastTime) / 1000;
 
 
-    lastTime = now;
+    lastTime =
+        now;
 
 
     if (playing) {
@@ -1291,22 +1260,37 @@ function animate(
             delta;
 
 
+        const duration =
+            Number(
+                timeline?.max || 10
+            );
+
+
         if (
-            currentTime > 10
+            currentTime >
+            duration
         ) {
 
             currentTime = 0;
+
         }
 
 
-        timeline.value =
-            currentTime;
+        if (timeline) {
+
+            timeline.value =
+                currentTime;
+
+        }
 
 
-        timeLabel.textContent =
-            currentTime.toFixed(
-                2
-            ) + "s";
+        if (timeLabel) {
+
+            timeLabel.textContent =
+                currentTime.toFixed(2) +
+                "s";
+
+        }
     }
 
 
@@ -1317,7 +1301,7 @@ function animate(
 
 
 /* =========================================================
-   START EDITOR
+   START
    ========================================================= */
 
 const firstCube =
@@ -1325,7 +1309,8 @@ const firstCube =
         "Cube"
     );
 
-selectObject(
+
+selectionManager.select(
     firstCube
 );
 
