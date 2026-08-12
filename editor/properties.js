@@ -1,301 +1,367 @@
 // editor/properties.js
 // SFM-Web Properties Panel
 
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-
 export class PropertiesManager {
 
     constructor(
-        container,
+        element,
         selectionManager,
         cameraManager,
         sceneManager
     ) {
 
-        this.container = container;
-        this.selectionManager = selectionManager;
-        this.cameraManager = cameraManager;
-        this.sceneManager = sceneManager;
+        this.element =
+            element;
 
-        this.unsubscribe =
-            this.selectionManager.onSelectionChanged(
-                () => this.render()
-            );
+        this.selectionManager =
+            selectionManager;
 
-        this.render();
+        this.cameraManager =
+            cameraManager;
+
+        this.sceneManager =
+            sceneManager;
+
+
+        this.selectedObject =
+            null;
+
+
+        this.refresh();
+
     }
 
 
     // =====================================================
-    // Render
+    // Refresh
     // =====================================================
 
-    render() {
+    refresh() {
 
-        if (!this.container)
+        if (!this.element)
             return;
 
-        const object =
+
+        this.selectedObject =
             this.selectionManager.getSelected();
 
 
-        if (!object) {
+        if (!this.selectedObject) {
 
-            this.container.innerHTML = `
-                <div class="empty">
-                    Select an object.
+            this.element.innerHTML = `
+                <div class="empty-properties">
+                    Select an object
                 </div>
             `;
 
             return;
+
         }
 
 
-        this.container.innerHTML = `
+        this.render();
 
-            <div class="properties-header">
-                <strong>Object</strong>
-            </div>
-
-
-            <div class="property">
-
-                <label>Name</label>
-
-                <input
-                    id="sfm-object-name"
-                    type="text"
-                    value="${this.escape(object.name)}"
-                >
-
-            </div>
-
-
-            <div class="property-section">
-
-                <div class="property-title">
-                    Position
-                </div>
-
-
-                <div class="vector-row">
-
-                    <span>X</span>
-
-                    <input
-                        id="sfm-pos-x"
-                        type="number"
-                        step="0.01"
-                        value="${object.position.x}"
-                    >
-
-                </div>
-
-
-                <div class="vector-row">
-
-                    <span>Y</span>
-
-                    <input
-                        id="sfm-pos-y"
-                        type="number"
-                        step="0.01"
-                        value="${object.position.y}"
-                    >
-
-                </div>
-
-
-                <div class="vector-row">
-
-                    <span>Z</span>
-
-                    <input
-                        id="sfm-pos-z"
-                        type="number"
-                        step="0.01"
-                        value="${object.position.z}"
-                    >
-
-                </div>
-
-            </div>
-
-
-            <div class="property-section">
-
-                <div class="property-title">
-                    Rotation
-                </div>
-
-
-                <div class="vector-row">
-
-                    <span>X</span>
-
-                    <input
-                        id="sfm-rot-x"
-                        type="number"
-                        step="0.1"
-                        value="${THREE.MathUtils.radToDeg(
-                            object.rotation.x
-                        ).toFixed(2)}"
-                    >
-
-                </div>
-
-
-                <div class="vector-row">
-
-                    <span>Y</span>
-
-                    <input
-                        id="sfm-rot-y"
-                        type="number"
-                        step="0.1"
-                        value="${THREE.MathUtils.radToDeg(
-                            object.rotation.y
-                        ).toFixed(2)}"
-                    >
-
-                </div>
-
-
-                <div class="vector-row">
-
-                    <span>Z</span>
-
-                    <input
-                        id="sfm-rot-z"
-                        type="number"
-                        step="0.1"
-                        value="${THREE.MathUtils.radToDeg(
-                            object.rotation.z
-                        ).toFixed(2)}"
-                    >
-
-                </div>
-
-            </div>
-
-
-            <div class="property-section">
-
-                <div class="property-title">
-                    Scale
-                </div>
-
-
-                <div class="vector-row">
-
-                    <span>X</span>
-
-                    <input
-                        id="sfm-scale-x"
-                        type="number"
-                        step="0.01"
-                        value="${object.scale.x}"
-                    >
-
-                </div>
-
-
-                <div class="vector-row">
-
-                    <span>Y</span>
-
-                    <input
-                        id="sfm-scale-y"
-                        type="number"
-                        step="0.01"
-                        value="${object.scale.y}"
-                    >
-
-                </div>
-
-
-                <div class="vector-row">
-
-                    <span>Z</span>
-
-                    <input
-                        id="sfm-scale-z"
-                        type="number"
-                        step="0.01"
-                        value="${object.scale.z}"
-                    >
-
-                </div>
-
-            </div>
-
-
-            <div class="property-section">
-
-                <div class="property-title">
-                    Actions
-                </div>
-
-
-                <button
-                    id="sfm-focus"
-                    class="property-button"
-                >
-                    Focus Camera
-                </button>
-
-
-                <button
-                    id="sfm-reset-transform"
-                    class="property-button"
-                >
-                    Reset Transform
-                </button>
-
-
-                <button
-                    id="sfm-delete"
-                    class="property-button danger"
-                >
-                    Delete Object
-                </button>
-
-            </div>
-
-        `;
-
-
-        this.bindEvents(
-            object
-        );
     }
 
 
     // =====================================================
-    // Bind UI
+    // Render properties
     // =====================================================
 
-    bindEvents(
-        object
-    ) {
+    render() {
 
-        const name =
-            this.container.querySelector(
-                "#sfm-object-name"
+        const object =
+            this.selectedObject;
+
+
+        this.element.innerHTML = "";
+
+
+        // =================================================
+        // Object information
+        // =================================================
+
+        const info =
+            document.createElement("div");
+
+        info.className =
+            "property";
+
+
+        info.innerHTML = `
+            <div class="property-title">
+                Object
+            </div>
+
+            <div class="property-row">
+                <label>Name</label>
+                <input
+                    id="property-name"
+                    type="text"
+                    value="${this.escapeHTML(
+                        object.name || "Object"
+                    )}"
+                >
+            </div>
+
+            <div class="property-row">
+                <label>Type</label>
+                <input
+                    type="text"
+                    value="${this.escapeHTML(
+                        object.type || "Object"
+                    )}"
+                    disabled
+                >
+            </div>
+        `;
+
+
+        this.element.appendChild(
+            info
+        );
+
+
+        // =================================================
+        // Transform
+        // =================================================
+
+        const transform =
+            document.createElement("div");
+
+        transform.className =
+            "property";
+
+
+        transform.innerHTML = `
+            <div class="property-title">
+                Transform
+            </div>
+
+            <div class="property-row">
+                <label>X</label>
+                <input
+                    id="position-x"
+                    type="number"
+                    step="0.01"
+                    value="${object.position.x}"
+                >
+            </div>
+
+            <div class="property-row">
+                <label>Y</label>
+                <input
+                    id="position-y"
+                    type="number"
+                    step="0.01"
+                    value="${object.position.y}"
+                >
+            </div>
+
+            <div class="property-row">
+                <label>Z</label>
+                <input
+                    id="position-z"
+                    type="number"
+                    step="0.01"
+                    value="${object.position.z}"
+                >
+            </div>
+        `;
+
+
+        this.element.appendChild(
+            transform
+        );
+
+
+        // =================================================
+        // Rotation
+        // =================================================
+
+        const rotation =
+            document.createElement("div");
+
+        rotation.className =
+            "property";
+
+
+        rotation.innerHTML = `
+            <div class="property-title">
+                Rotation
+            </div>
+
+            <div class="property-row">
+                <label>X</label>
+                <input
+                    id="rotation-x"
+                    type="number"
+                    step="1"
+                    value="${this.radiansToDegrees(
+                        object.rotation.x
+                    )}"
+                >
+            </div>
+
+            <div class="property-row">
+                <label>Y</label>
+                <input
+                    id="rotation-y"
+                    type="number"
+                    step="1"
+                    value="${this.radiansToDegrees(
+                        object.rotation.y
+                    )}"
+                >
+            </div>
+
+            <div class="property-row">
+                <label>Z</label>
+                <input
+                    id="rotation-z"
+                    type="number"
+                    step="1"
+                    value="${this.radiansToDegrees(
+                        object.rotation.z
+                    )}"
+                >
+            </div>
+        `;
+
+
+        this.element.appendChild(
+            rotation
+        );
+
+
+        // =================================================
+        // Scale
+        // =================================================
+
+        const scale =
+            document.createElement("div");
+
+        scale.className =
+            "property";
+
+
+        scale.innerHTML = `
+            <div class="property-title">
+                Scale
+            </div>
+
+            <div class="property-row">
+                <label>X</label>
+                <input
+                    id="scale-x"
+                    type="number"
+                    step="0.01"
+                    value="${object.scale.x}"
+                >
+            </div>
+
+            <div class="property-row">
+                <label>Y</label>
+                <input
+                    id="scale-y"
+                    type="number"
+                    step="0.01"
+                    value="${object.scale.y}"
+                >
+            </div>
+
+            <div class="property-row">
+                <label>Z</label>
+                <input
+                    id="scale-z"
+                    type="number"
+                    step="0.01"
+                    value="${object.scale.z}"
+                >
+            </div>
+        `;
+
+
+        this.element.appendChild(
+            scale
+        );
+
+
+        // =================================================
+        // Actions
+        // =================================================
+
+        const actions =
+            document.createElement("div");
+
+        actions.className =
+            "property";
+
+
+        actions.innerHTML = `
+            <div class="property-title">
+                Actions
+            </div>
+
+            <div class="button-grid">
+
+                <button id="focus-object">
+                    Focus
+                </button>
+
+                <button id="reset-transform">
+                    Reset
+                </button>
+
+            </div>
+        `;
+
+
+        this.element.appendChild(
+            actions
+        );
+
+
+        this.setupInputs();
+
+    }
+
+
+    // =====================================================
+    // Setup inputs
+    // =====================================================
+
+    setupInputs() {
+
+        const object =
+            this.selectedObject;
+
+
+        if (!object)
+            return;
+
+
+        // =================================================
+        // Name
+        // =================================================
+
+        const nameInput =
+            this.element.querySelector(
+                "#property-name"
             );
 
 
-        if (name) {
+        if (nameInput) {
 
-            name.addEventListener(
+            nameInput.addEventListener(
                 "change",
                 () => {
 
                     object.name =
-                        name.value.trim() ||
+                        nameInput.value ||
                         "Object";
 
-                    this.render();
+                    this.refreshOutliner();
 
                 }
             );
@@ -303,8 +369,12 @@ export class PropertiesManager {
         }
 
 
-        this.bindInput(
-            "#sfm-pos-x",
+        // =================================================
+        // Position
+        // =================================================
+
+        this.bindNumber(
+            "#position-x",
             value => {
 
                 object.position.x =
@@ -314,8 +384,8 @@ export class PropertiesManager {
         );
 
 
-        this.bindInput(
-            "#sfm-pos-y",
+        this.bindNumber(
+            "#position-y",
             value => {
 
                 object.position.y =
@@ -325,8 +395,8 @@ export class PropertiesManager {
         );
 
 
-        this.bindInput(
-            "#sfm-pos-z",
+        this.bindNumber(
+            "#position-z",
             value => {
 
                 object.position.z =
@@ -336,12 +406,16 @@ export class PropertiesManager {
         );
 
 
-        this.bindInput(
-            "#sfm-rot-x",
+        // =================================================
+        // Rotation
+        // =================================================
+
+        this.bindNumber(
+            "#rotation-x",
             value => {
 
                 object.rotation.x =
-                    THREE.MathUtils.degToRad(
+                    this.degreesToRadians(
                         value
                     );
 
@@ -349,12 +423,12 @@ export class PropertiesManager {
         );
 
 
-        this.bindInput(
-            "#sfm-rot-y",
+        this.bindNumber(
+            "#rotation-y",
             value => {
 
                 object.rotation.y =
-                    THREE.MathUtils.degToRad(
+                    this.degreesToRadians(
                         value
                     );
 
@@ -362,12 +436,12 @@ export class PropertiesManager {
         );
 
 
-        this.bindInput(
-            "#sfm-rot-z",
+        this.bindNumber(
+            "#rotation-z",
             value => {
 
                 object.rotation.z =
-                    THREE.MathUtils.degToRad(
+                    this.degreesToRadians(
                         value
                     );
 
@@ -375,8 +449,12 @@ export class PropertiesManager {
         );
 
 
-        this.bindInput(
-            "#sfm-scale-x",
+        // =================================================
+        // Scale
+        // =================================================
+
+        this.bindNumber(
+            "#scale-x",
             value => {
 
                 object.scale.x =
@@ -386,8 +464,8 @@ export class PropertiesManager {
         );
 
 
-        this.bindInput(
-            "#sfm-scale-y",
+        this.bindNumber(
+            "#scale-y",
             value => {
 
                 object.scale.y =
@@ -397,8 +475,8 @@ export class PropertiesManager {
         );
 
 
-        this.bindInput(
-            "#sfm-scale-z",
+        this.bindNumber(
+            "#scale-z",
             value => {
 
                 object.scale.z =
@@ -408,9 +486,13 @@ export class PropertiesManager {
         );
 
 
+        // =================================================
+        // Focus
+        // =================================================
+
         const focus =
-            this.container.querySelector(
-                "#sfm-focus"
+            this.element.querySelector(
+                "#focus-object"
             );
 
 
@@ -430,9 +512,13 @@ export class PropertiesManager {
         }
 
 
+        // =================================================
+        // Reset
+        // =================================================
+
         const reset =
-            this.container.querySelector(
-                "#sfm-reset-transform"
+            this.element.querySelector(
+                "#reset-transform"
             );
 
 
@@ -448,11 +534,13 @@ export class PropertiesManager {
                         0
                     );
 
+
                     object.rotation.set(
                         0,
                         0,
                         0
                     );
+
 
                     object.scale.set(
                         1,
@@ -461,31 +549,7 @@ export class PropertiesManager {
                     );
 
 
-                    this.render();
-
-                }
-            );
-
-        }
-
-
-        const deleteButton =
-            this.container.querySelector(
-                "#sfm-delete"
-            );
-
-
-        if (deleteButton) {
-
-            deleteButton.addEventListener(
-                "click",
-                () => {
-
-                    this.sceneManager.removeObject(
-                        object
-                    );
-
-                    this.selectionManager.clear();
+                    this.refresh();
 
                 }
             );
@@ -496,16 +560,16 @@ export class PropertiesManager {
 
 
     // =====================================================
-    // Input helper
+    // Bind number input
     // =====================================================
 
-    bindInput(
+    bindNumber(
         selector,
         callback
     ) {
 
         const input =
-            this.container.querySelector(
+            this.element.querySelector(
                 selector
             );
 
@@ -515,7 +579,7 @@ export class PropertiesManager {
 
 
         input.addEventListener(
-            "change",
+            "input",
             () => {
 
                 const value =
@@ -543,65 +607,121 @@ export class PropertiesManager {
 
 
     // =====================================================
-    // Escape HTML
+    // Refresh outliner
     // =====================================================
 
-    escape(
-        value
+    refreshOutliner() {
+
+        const outliner =
+            document.querySelector(
+                "#outliner"
+            );
+
+
+        if (!outliner)
+            return;
+
+
+        const selected =
+            this.selectionManager.getSelected();
+
+
+        outliner
+            .querySelectorAll(
+                ".tree-item"
+            )
+            .forEach(
+                item => {
+
+                    if (
+                        item.textContent ===
+                        selected?.name
+                    ) {
+
+                        item.classList.add(
+                            "selected"
+                        );
+
+                    }
+                    else {
+
+                        item.classList.remove(
+                            "selected"
+                        );
+
+                    }
+
+                }
+            );
+
+    }
+
+
+    // =====================================================
+    // Degrees → radians
+    // =====================================================
+
+    degreesToRadians(
+        degrees
     ) {
 
-        return String(
-            value
-        ).replace(
-            /[&<>"']/g,
-            character => {
-
-                const entities = {
-
-                    "&": "&amp;",
-                    "<": "&lt;",
-                    ">": "&gt;",
-                    '"': "&quot;",
-                    "'": "&#39;"
-
-                };
-
-                return entities[
-                    character
-                ];
-
-            }
+        return (
+            degrees *
+            Math.PI /
+            180
         );
 
     }
 
 
     // =====================================================
-    // Refresh
+    // Radians → degrees
     // =====================================================
 
-    refresh() {
+    radiansToDegrees(
+        radians
+    ) {
 
-        this.render();
+        return (
+            radians *
+            180 /
+            Math.PI
+        );
 
     }
 
 
     // =====================================================
-    // Dispose
+    // Escape HTML
     // =====================================================
 
-    dispose() {
+    escapeHTML(
+        value
+    ) {
 
-        if (
-            this.unsubscribe
-        ) {
-
-            this.unsubscribe();
-
-        }
-
-        this.container.innerHTML = "";
+        return String(
+            value
+        )
+            .replaceAll(
+                "&",
+                "&amp;"
+            )
+            .replaceAll(
+                "<",
+                "&lt;"
+            )
+            .replaceAll(
+                ">",
+                "&gt;"
+            )
+            .replaceAll(
+                '"',
+                "&quot;"
+            )
+            .replaceAll(
+                "'",
+                "&#039;"
+            );
 
     }
 
