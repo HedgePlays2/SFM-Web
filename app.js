@@ -1,78 +1,71 @@
-```javascript
+// app.js
+// SFM-Web main controller
+
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js";
+
+import { SceneManager } from "./editor/scene.js";
+
 
 /* =========================================================
    DOM
    ========================================================= */
 
-const viewport = document.querySelector("#viewport");
-const status = document.querySelector("#status");
-const outliner = document.querySelector("#outliner");
-const properties = document.querySelector("#properties");
+const viewport =
+    document.querySelector("#viewport");
 
-const timeline = document.querySelector("#timeline");
-const timeLabel = document.querySelector("#timeLabel");
+const status =
+    document.querySelector("#status");
 
-const aiPrompt = document.querySelector("#aiPrompt");
-const aiOutput = document.querySelector("#aiOutput");
+const outliner =
+    document.querySelector("#outliner");
 
+const properties =
+    document.querySelector("#properties");
 
-/* =========================================================
-   THREE.JS SCENE
-   ========================================================= */
+const timeline =
+    document.querySelector("#timeline");
 
-const scene = new THREE.Scene();
+const timeLabel =
+    document.querySelector("#timeLabel");
 
-scene.background = new THREE.Color(0x101218);
+const aiPrompt =
+    document.querySelector("#aiPrompt");
 
-
-/* =========================================================
-   CAMERA
-   ========================================================= */
-
-const camera = new THREE.PerspectiveCamera(
-    55,
-    1,
-    0.1,
-    1000
-);
-
-camera.position.set(
-    6,
-    4,
-    8
-);
+const aiOutput =
+    document.querySelector("#aiOutput");
 
 
 /* =========================================================
-   RENDERER
+   SCENE MANAGER
    ========================================================= */
 
-const renderer = new THREE.WebGLRenderer({
-    antialias: true
-});
+const sceneManager =
+    new SceneManager(
+        viewport
+    );
 
-renderer.setPixelRatio(
-    Math.min(window.devicePixelRatio, 2)
-);
 
-renderer.shadowMap.enabled = true;
+const scene =
+    sceneManager.scene;
 
-viewport.appendChild(
-    renderer.domElement
-);
+const camera =
+    sceneManager.camera;
+
+const renderer =
+    sceneManager.renderer;
 
 
 /* =========================================================
    CAMERA CONTROLS
    ========================================================= */
 
-const controls = new OrbitControls(
-    camera,
-    renderer.domElement
-);
+const controls =
+    new OrbitControls(
+        camera,
+        renderer.domElement
+    );
 
 controls.target.set(
     0,
@@ -84,99 +77,17 @@ controls.enableDamping = true;
 
 
 /* =========================================================
-   LIGHTING
+   STATE
    ========================================================= */
-
-const hemisphereLight =
-    new THREE.HemisphereLight(
-        0xb9c7ff,
-        0x222222,
-        2
-    );
-
-scene.add(
-    hemisphereLight
-);
-
-
-const keyLight =
-    new THREE.DirectionalLight(
-        0xffffff,
-        3
-    );
-
-keyLight.position.set(
-    5,
-    8,
-    5
-);
-
-keyLight.castShadow = true;
-
-scene.add(
-    keyLight
-);
-
-
-/* =========================================================
-   EDITOR GRID
-   ========================================================= */
-
-const grid =
-    new THREE.GridHelper(
-        30,
-        30,
-        0x4b515c,
-        0x292d35
-    );
-
-scene.add(
-    grid
-);
-
-
-/* =========================================================
-   OBJECT MANAGEMENT
-   ========================================================= */
-
-const objects = [];
 
 let selected = null;
 
-let currentTool = "translate";
+let currentTool =
+    "translate";
 
 let playing = false;
 
 let currentTime = 0;
-
-
-/* =========================================================
-   ADD OBJECT
-   ========================================================= */
-
-function addObject(
-    object,
-    name = "Object"
-) {
-
-    object.name = name;
-
-    object.userData.editorObject = true;
-
-    scene.add(
-        object
-    );
-
-    objects.push(
-        object
-    );
-
-    selectObject(
-        object
-    );
-
-    refreshOutliner();
-}
 
 
 /* =========================================================
@@ -192,7 +103,6 @@ function selectObject(
     refreshOutliner();
 
     renderProperties();
-
 }
 
 
@@ -205,7 +115,8 @@ function refreshOutliner() {
     outliner.innerHTML = "";
 
     for (
-        const object of objects
+        const object
+        of sceneManager.objects
     ) {
 
         const row =
@@ -229,17 +140,16 @@ function refreshOutliner() {
         row.textContent =
             object.name;
 
-        row.onclick = () =>
-            selectObject(
-                object
-            );
+        row.onclick =
+            () =>
+                selectObject(
+                    object
+                );
 
         outliner.appendChild(
             row
         );
-
     }
-
 }
 
 
@@ -264,9 +174,7 @@ function renderProperties() {
 
         <div class="prop">
 
-            <label>
-                Name
-            </label>
+            <label>Name</label>
 
             <input
                 id="propName"
@@ -278,25 +186,20 @@ function renderProperties() {
 
         <div class="prop">
 
-            <label>
-                Position
-            </label>
+            <label>Position</label>
 
             <input
                 id="posX"
-                placeholder="X"
                 value="${selected.position.x.toFixed(2)}"
             >
 
             <input
                 id="posY"
-                placeholder="Y"
                 value="${selected.position.y.toFixed(2)}"
             >
 
             <input
                 id="posZ"
-                placeholder="Z"
                 value="${selected.position.z.toFixed(2)}"
             >
 
@@ -305,13 +208,10 @@ function renderProperties() {
 
         <div class="prop">
 
-            <label>
-                Rotation
-            </label>
+            <label>Rotation</label>
 
             <input
                 id="rotX"
-                placeholder="X"
                 value="${THREE.MathUtils.radToDeg(
                     selected.rotation.x
                 ).toFixed(1)}"
@@ -319,7 +219,6 @@ function renderProperties() {
 
             <input
                 id="rotY"
-                placeholder="Y"
                 value="${THREE.MathUtils.radToDeg(
                     selected.rotation.y
                 ).toFixed(1)}"
@@ -327,7 +226,6 @@ function renderProperties() {
 
             <input
                 id="rotZ"
-                placeholder="Z"
                 value="${THREE.MathUtils.radToDeg(
                     selected.rotation.z
                 ).toFixed(1)}"
@@ -338,25 +236,20 @@ function renderProperties() {
 
         <div class="prop">
 
-            <label>
-                Scale
-            </label>
+            <label>Scale</label>
 
             <input
                 id="scaleX"
-                placeholder="X"
                 value="${selected.scale.x.toFixed(2)}"
             >
 
             <input
                 id="scaleY"
-                placeholder="Y"
                 value="${selected.scale.y.toFixed(2)}"
             >
 
             <input
                 id="scaleZ"
-                placeholder="Z"
                 value="${selected.scale.z.toFixed(2)}"
             >
 
@@ -369,29 +262,8 @@ function renderProperties() {
         >
             Delete Object
         </button>
-
     `;
 
-
-    /* NAME */
-
-    document.querySelector(
-        "#propName"
-    ).addEventListener(
-        "change",
-        event => {
-
-            selected.name =
-                event.target.value ||
-                "Object";
-
-            refreshOutliner();
-
-        }
-    );
-
-
-    /* POSITION */
 
     bindNumber(
         "#posX",
@@ -414,8 +286,6 @@ function renderProperties() {
                 value
     );
 
-
-    /* ROTATION */
 
     bindNumber(
         "#rotX",
@@ -445,8 +315,6 @@ function renderProperties() {
     );
 
 
-    /* SCALE */
-
     bindNumber(
         "#scaleX",
         value =>
@@ -469,46 +337,31 @@ function renderProperties() {
     );
 
 
-    /* DELETE */
+    document.querySelector(
+        "#propName"
+    ).addEventListener(
+        "change",
+        event => {
+
+            selected.name =
+                event.target.value ||
+                "Object";
+
+            refreshOutliner();
+
+        }
+    );
+
 
     document.querySelector(
         "#deleteObject"
-    ).onclick = () => {
-
-        if (!selected)
-            return;
-
-        scene.remove(
-            selected
-        );
-
-        const index =
-            objects.indexOf(
-                selected
-            );
-
-        if (index !== -1) {
-
-            objects.splice(
-                index,
-                1
-            );
-
-        }
-
-        selected = null;
-
-        refreshOutliner();
-
-        renderProperties();
-
-    };
-
+    ).onclick =
+        deleteSelectedObject;
 }
 
 
 /* =========================================================
-   PROPERTY HELPERS
+   PROPERTY HELPER
    ========================================================= */
 
 function bindNumber(
@@ -524,12 +377,13 @@ function bindNumber(
     if (!element)
         return;
 
+
     element.addEventListener(
         "change",
         () => {
 
             const value =
-                parseFloat(
+                Number(
                     element.value
                 );
 
@@ -547,9 +401,36 @@ function bindNumber(
 
         }
     );
-
 }
 
+
+/* =========================================================
+   DELETE OBJECT
+   ========================================================= */
+
+function deleteSelectedObject() {
+
+    if (!selected)
+        return;
+
+    sceneManager.removeObject(
+        selected
+    );
+
+    selected = null;
+
+    refreshOutliner();
+
+    renderProperties();
+
+    status.textContent =
+        "Object deleted";
+}
+
+
+/* =========================================================
+   HTML ESCAPE
+   ========================================================= */
 
 function escapeHTML(
     value
@@ -574,10 +455,8 @@ function escapeHTML(
             return entities[
                 character
             ];
-
         }
     );
-
 }
 
 
@@ -585,105 +464,46 @@ function escapeHTML(
    ADD CUBE
    ========================================================= */
 
-function addCube() {
-
-    const geometry =
-        new THREE.BoxGeometry(
-            1.5,
-            1.5,
-            1.5
-        );
-
-    const material =
-        new THREE.MeshStandardMaterial({
-            color: 0x7b8cff,
-            roughness: 0.65
-        });
-
-    const cube =
-        new THREE.Mesh(
-            geometry,
-            material
-        );
-
-    cube.position.y =
-        0.75;
-
-    cube.castShadow =
-        true;
-
-    cube.receiveShadow =
-        true;
-
-    addObject(
-        cube,
-        "Cube"
-    );
-
-}
-
-
 document.querySelector(
     "#addCube"
 ).onclick =
-    addCube;
+    () => {
+
+        const cube =
+            sceneManager.createCube();
+
+        selectObject(
+            cube
+        );
+
+        status.textContent =
+            "Cube added";
+    };
 
 
 /* =========================================================
    ADD LIGHT
    ========================================================= */
 
-function addLight() {
-
-    const light =
-        new THREE.PointLight(
-            0xffddaa,
-            30,
-            15
-        );
-
-    light.position.set(
-        2,
-        4,
-        2
-    );
-
-
-    const marker =
-        new THREE.Mesh(
-
-            new THREE.SphereGeometry(
-                0.12
-            ),
-
-            new THREE.MeshBasicMaterial({
-                color: 0xffddaa
-            })
-
-        );
-
-
-    light.add(
-        marker
-    );
-
-
-    addObject(
-        light,
-        "Light"
-    );
-
-}
-
-
 document.querySelector(
     "#addLight"
 ).onclick =
-    addLight;
+    () => {
+
+        const light =
+            sceneManager.createLight();
+
+        selectObject(
+            light
+        );
+
+        status.textContent =
+            "Light added";
+    };
 
 
 /* =========================================================
-   EDITOR TOOLS
+   TOOLS
    ========================================================= */
 
 document
@@ -693,17 +513,16 @@ document
     .forEach(
         button => {
 
-            button.onclick = () => {
+            button.onclick =
+                () => {
 
-                currentTool =
-                    button.dataset.tool;
+                    currentTool =
+                        button.dataset.tool;
 
-                status.textContent =
-                    "Tool: " +
-                    currentTool;
-
-            };
-
+                    status.textContent =
+                        "Tool: " +
+                        currentTool;
+                };
         }
     );
 
@@ -714,40 +533,31 @@ document
 
 document.querySelector(
     "#newScene"
-).onclick = () => {
+).onclick =
+    () => {
 
-    for (
-        const object of [
-            ...objects
-        ]
-    ) {
+        sceneManager.clearObjects();
 
-        scene.remove(
-            object
-        );
+        selected = null;
 
-    }
+        currentTime = 0;
 
-    objects.length = 0;
+        timeline.value = 0;
 
-    selected = null;
+        timeLabel.textContent =
+            "0.00s";
 
-    currentTime = 0;
+        refreshOutliner();
 
-    timeline.value = 0;
+        renderProperties();
 
-    refreshOutliner();
-
-    renderProperties();
-
-    status.textContent =
-        "New scene";
-
-};
+        status.textContent =
+            "New scene";
+    };
 
 
 /* =========================================================
-   OBJECT SELECTION
+   OBJECT PICKING
    ========================================================= */
 
 const raycaster =
@@ -757,84 +567,80 @@ const mouse =
     new THREE.Vector2();
 
 
-renderer.domElement
-    .addEventListener(
-        "pointerdown",
-        event => {
+renderer.domElement.addEventListener(
+    "pointerdown",
+    event => {
 
-            const rect =
-                renderer.domElement
-                    .getBoundingClientRect();
-
-
-            mouse.x =
-                (
-                    (event.clientX -
-                        rect.left) /
-                    rect.width
-                ) * 2 - 1;
+        const rect =
+            renderer.domElement
+                .getBoundingClientRect();
 
 
-            mouse.y =
-                -(
-                    (event.clientY -
-                        rect.top) /
-                    rect.height
-                ) * 2 + 1;
+        mouse.x =
+            (
+                (event.clientX -
+                    rect.left) /
+                rect.width
+            ) * 2 - 1;
 
 
-            raycaster.setFromCamera(
-                mouse,
-                camera
+        mouse.y =
+            -(
+                (event.clientY -
+                    rect.top) /
+                rect.height
+            ) * 2 + 1;
+
+
+        raycaster.setFromCamera(
+            mouse,
+            camera
+        );
+
+
+        const hits =
+            raycaster.intersectObjects(
+                sceneManager.objects,
+                true
             );
 
 
-            const hits =
-                raycaster.intersectObjects(
-                    objects,
-                    true
-                );
+        if (!hits.length)
+            return;
 
 
-            if (!hits.length)
-                return;
+        let object =
+            hits[0].object;
 
 
-            let object =
-                hits[0].object;
+        while (
+            object.parent &&
+            !sceneManager.objects.includes(
+                object
+            )
+        ) {
 
-
-            while (
-                object.parent &&
-                !objects.includes(
-                    object
-                )
-            ) {
-
-                object =
-                    object.parent;
-
-            }
-
-
-            if (
-                objects.includes(
-                    object
-                )
-            ) {
-
-                selectObject(
-                    object
-                );
-
-            }
-
+            object =
+                object.parent;
         }
-    );
+
+
+        if (
+            sceneManager.objects.includes(
+                object
+            )
+        ) {
+
+            selectObject(
+                object
+            );
+        }
+    }
+);
 
 
 /* =========================================================
-   GLB / GLTF MODEL IMPORT
+   MODEL IMPORT
    ========================================================= */
 
 const modelInput =
@@ -893,24 +699,26 @@ modelInput.addEventListener(
 
                             object.receiveShadow =
                                 true;
-
                         }
-
                     }
                 );
 
 
                 const name =
-                    file.name
-                        .replace(
-                            /\.(glb|gltf)$/i,
-                            ""
-                        );
+                    file.name.replace(
+                        /\.(glb|gltf)$/i,
+                        ""
+                    );
 
 
-                addObject(
+                sceneManager.addObject(
                     model,
                     name
+                );
+
+
+                selectObject(
+                    model
                 );
 
 
@@ -922,7 +730,6 @@ modelInput.addEventListener(
                 URL.revokeObjectURL(
                     url
                 );
-
             },
 
             undefined,
@@ -939,17 +746,149 @@ modelInput.addEventListener(
                 URL.revokeObjectURL(
                     url
                 );
-
             }
-
         );
-
     }
 );
 
 
 /* =========================================================
-   SCENE SERIALIZATION
+   TIMELINE
+   ========================================================= */
+
+timeline.addEventListener(
+    "input",
+    () => {
+
+        currentTime =
+            Number(
+                timeline.value
+            );
+
+        timeLabel.textContent =
+            currentTime.toFixed(
+                2
+            ) + "s";
+    }
+);
+
+
+document.querySelector(
+    "#play"
+).onclick =
+    () => {
+
+        playing = true;
+    };
+
+
+document.querySelector(
+    "#stop"
+).onclick =
+    () => {
+
+        playing = false;
+
+        currentTime = 0;
+
+        timeline.value = 0;
+
+        timeLabel.textContent =
+            "0.00s";
+    };
+
+
+/* =========================================================
+   PUTER SAVE
+   ========================================================= */
+
+document.querySelector(
+    "#saveScene"
+).onclick =
+    async () => {
+
+        try {
+
+            const data =
+                serializeScene();
+
+
+            await puter.fs.write(
+                "sfm-web-project.json",
+                JSON.stringify(
+                    data,
+                    null,
+                    2
+                )
+            );
+
+
+            status.textContent =
+                "Saved to Puter";
+
+        }
+        catch (error) {
+
+            console.error(
+                error
+            );
+
+            status.textContent =
+                "Save failed";
+        }
+    };
+
+
+/* =========================================================
+   PUTER LOAD
+   ========================================================= */
+
+document.querySelector(
+    "#loadScene"
+).onclick =
+    async () => {
+
+        try {
+
+            const file =
+                await puter.fs.read(
+                    "sfm-web-project.json"
+                );
+
+
+            const text =
+                await file.text();
+
+
+            const data =
+                JSON.parse(
+                    text
+                );
+
+
+            restoreScene(
+                data
+            );
+
+
+            status.textContent =
+                "Loaded from Puter";
+
+        }
+        catch (error) {
+
+            console.error(
+                error
+            );
+
+            status.textContent =
+                "No saved project found";
+        }
+    };
+
+
+/* =========================================================
+   SERIALIZE
    ========================================================= */
 
 function serializeScene() {
@@ -965,11 +904,10 @@ function serializeScene() {
 
             target:
                 controls.target.toArray()
-
         },
 
         objects:
-            objects.map(
+            sceneManager.objects.map(
                 object => ({
 
                     name:
@@ -991,138 +929,26 @@ function serializeScene() {
 
                     scale:
                         object.scale.toArray()
-
                 })
             )
-
     };
-
 }
 
 
 /* =========================================================
-   PUTER SAVE
-   ========================================================= */
-
-document.querySelector(
-    "#saveScene"
-).onclick = async () => {
-
-    try {
-
-        const data =
-            serializeScene();
-
-
-        await puter.fs.write(
-            "sfm-web-project.json",
-            JSON.stringify(
-                data,
-                null,
-                2
-            )
-        );
-
-
-        status.textContent =
-            "Saved to Puter";
-
-    }
-    catch (
-        error
-    ) {
-
-        console.error(
-            error
-        );
-
-        status.textContent =
-            "Save failed";
-
-    }
-
-};
-
-
-/* =========================================================
-   PUTER LOAD
-   ========================================================= */
-
-document.querySelector(
-    "#loadScene"
-).onclick = async () => {
-
-    try {
-
-        const file =
-            await puter.fs.read(
-                "sfm-web-project.json"
-            );
-
-
-        const text =
-            await file.text();
-
-
-        const data =
-            JSON.parse(
-                text
-            );
-
-
-        restoreScene(
-            data
-        );
-
-
-        status.textContent =
-            "Loaded from Puter";
-
-    }
-    catch (
-        error
-    ) {
-
-        console.error(
-            error
-        );
-
-        status.textContent =
-            "No saved project found";
-
-    }
-
-};
-
-
-/* =========================================================
-   RESTORE SCENE
+   RESTORE
    ========================================================= */
 
 function restoreScene(
     data
 ) {
 
-    for (
-        const object of [
-            ...objects
-        ]
-    ) {
-
-        scene.remove(
-            object
-        );
-
-    }
-
-    objects.length = 0;
+    sceneManager.clearObjects();
 
     selected = null;
 
 
-    if (
-        data.camera
-    ) {
+    if (data.camera) {
 
         camera.position.fromArray(
             data.camera.position
@@ -1131,13 +957,12 @@ function restoreScene(
         controls.target.fromArray(
             data.camera.target
         );
-
     }
 
 
     for (
-        const objectData of
-        data.objects || []
+        const objectData
+        of data.objects || []
     ) {
 
         if (
@@ -1145,135 +970,98 @@ function restoreScene(
             "Mesh"
         ) {
 
-            const mesh =
-                new THREE.Mesh(
-
-                    new THREE.BoxGeometry(
-                        1.5,
-                        1.5,
-                        1.5
-                    ),
-
-                    new THREE.MeshStandardMaterial({
-                        color: 0x7b8cff
-                    })
-
+            const object =
+                sceneManager.createCube(
+                    objectData.name
                 );
 
 
-            mesh.position.fromArray(
+            object.position.fromArray(
                 objectData.position
             );
 
-
-            mesh.rotation.fromArray(
+            object.rotation.fromArray(
                 objectData.rotation
             );
 
-
-            mesh.scale.fromArray(
+            object.scale.fromArray(
                 objectData.scale
             );
-
-
-            addObject(
-                mesh,
-                objectData.name
-            );
-
         }
-
     }
 
-
-    selected = null;
 
     refreshOutliner();
 
     renderProperties();
-
 }
 
 
 /* =========================================================
-   PUTER AI ASSISTANT
+   PUTER AI
    ========================================================= */
 
 document.querySelector(
     "#askAI"
-).onclick = async () => {
+).onclick =
+    async () => {
 
-    const prompt =
-        aiPrompt.value.trim();
-
-
-    if (!prompt)
-        return;
+        const prompt =
+            aiPrompt.value.trim();
 
 
-    aiOutput.textContent =
-        "Thinking...";
+        if (!prompt)
+            return;
 
 
-    try {
-
-        const sceneData =
-            JSON.stringify(
-                serializeScene()
-            );
+        aiOutput.textContent =
+            "Thinking...";
 
 
-        const response =
-            await puter.ai.chat(
+        try {
 
-                `You are an assistant for a browser-based Source Filmmaker-style editor.
+            const response =
+                await puter.ai.chat(
+
+                    `You are an assistant for SFM-Web,
+a browser-based Source Filmmaker-style editor.
 
 Help with:
+- filmmaking
 - camera composition
-- scene setup
-- animation ideas
 - lighting
 - posing
-- filmmaking
-- troubleshooting
-
-Current scene:
-
-${sceneData}
+- animation
+- scene setup
 
 User request:
 
 ${prompt}`,
 
-                {
-                    model:
-                        "gpt-5.4-nano"
-                }
+                    {
+                        model:
+                            "gpt-5.4-nano"
+                    }
+                );
 
+
+            aiOutput.textContent =
+                response?.message?.content ??
+                response?.text ??
+                String(response);
+
+        }
+        catch (error) {
+
+            console.error(
+                error
             );
 
-
-        aiOutput.textContent =
-            response?.message?.content ??
-            response?.text ??
-            String(response);
-
-    }
-    catch (
-        error
-    ) {
-
-        console.error(
-            error
-        );
-
-        aiOutput.textContent =
-            "AI error: " +
-            error.message;
-
-    }
-
-};
+            aiOutput.textContent =
+                "AI error: " +
+                error.message;
+        }
+    };
 
 
 /* =========================================================
@@ -1282,117 +1070,11 @@ ${prompt}`,
 
 document.querySelector(
     "#aiButton"
-).onclick = () => {
-
-    aiPrompt.focus();
-
-};
-
-
-/* =========================================================
-   TIMELINE
-   ========================================================= */
-
-timeline.addEventListener(
-    "input",
+).onclick =
     () => {
 
-        currentTime =
-            Number(
-                timeline.value
-            );
-
-
-        timeLabel.textContent =
-            currentTime.toFixed(
-                2
-            ) + "s";
-
-    }
-);
-
-
-/* =========================================================
-   PLAY
-   ========================================================= */
-
-document.querySelector(
-    "#play"
-).onclick = () => {
-
-    playing = true;
-
-};
-
-
-/* =========================================================
-   STOP
-   ========================================================= */
-
-document.querySelector(
-    "#stop"
-).onclick = () => {
-
-    playing = false;
-
-    currentTime = 0;
-
-    timeline.value = 0;
-
-    timeLabel.textContent =
-        "0.00s";
-
-};
-
-
-/* =========================================================
-   RESIZE
-   ========================================================= */
-
-function resizeRenderer() {
-
-    const width =
-        viewport.clientWidth;
-
-    const height =
-        viewport.clientHeight;
-
-
-    if (
-        width <= 0 ||
-        height <= 0
-    ) {
-
-        return;
-
-    }
-
-
-    camera.aspect =
-        width / height;
-
-
-    camera.updateProjectionMatrix();
-
-
-    renderer.setSize(
-        width,
-        height,
-        false
-    );
-
-}
-
-
-const resizeObserver =
-    new ResizeObserver(
-        resizeRenderer
-    );
-
-
-resizeObserver.observe(
-    viewport
-);
+        aiPrompt.focus();
+    };
 
 
 /* =========================================================
@@ -1431,7 +1113,6 @@ function animate(
         ) {
 
             currentTime = 0;
-
         }
 
 
@@ -1443,18 +1124,12 @@ function animate(
             currentTime.toFixed(
                 2
             ) + "s";
-
     }
 
 
     controls.update();
 
-
-    renderer.render(
-        scene,
-        camera
-    );
-
+    sceneManager.render();
 }
 
 
@@ -1462,11 +1137,15 @@ function animate(
    START
    ========================================================= */
 
-resizeRenderer();
+const firstCube =
+    sceneManager.createCube(
+        "Cube"
+    );
 
-addCube();
+selectObject(
+    firstCube
+);
 
 animate(
     performance.now()
 );
-```
