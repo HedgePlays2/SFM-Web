@@ -1,7 +1,8 @@
 // editor/selection.js
-// SFM-Web selection system
+// SFM-Web Object Selection System
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+
 
 export class SelectionManager {
 
@@ -12,13 +13,15 @@ export class SelectionManager {
         this.sceneManager =
             sceneManager;
 
-        this.renderer =
-            sceneManager.renderer;
-
         this.camera =
             sceneManager.camera;
 
-        this.selected = null;
+        this.renderer =
+            sceneManager.renderer;
+
+        this.canvas =
+            this.renderer.domElement;
+
 
         this.raycaster =
             new THREE.Raycaster();
@@ -26,25 +29,331 @@ export class SelectionManager {
         this.mouse =
             new THREE.Vector2();
 
-        this.listeners = [];
 
-        this.enabled = true;
+        this.selected =
+            null;
 
-        this.pointerDownHandler =
-            this.onPointerDown.bind(
-                this
-            );
+        this.previousSelected =
+            null;
 
-        this.renderer.domElement.addEventListener(
-            "pointerdown",
-            this.pointerDownHandler
-        );
+
+        this.highlight =
+            null;
+
+
+        this.onSelectionChangedCallback =
+            null;
+
+
+        this.pointerDownX =
+            0;
+
+        this.pointerDownY =
+            0;
+
+
+        this.setupMouse();
+
     }
 
 
-    // =========================================
-    // Select object
-    // =========================================
+    // =====================================================
+    // Mouse setup
+    // =====================================================
+
+    setupMouse() {
+
+        this.canvas.addEventListener(
+            "pointerdown",
+            event => {
+
+                this.pointerDownX =
+                    event.clientX;
+
+                this.pointerDownY =
+                    event.clientY;
+
+            }
+        );
+
+
+        this.canvas.addEventListener(
+            "pointerup",
+            event => {
+
+                const dx =
+                    Math.abs(
+                        event.clientX -
+                        this.pointerDownX
+                    );
+
+
+                const dy =
+                    Math.abs(
+                        event.clientY -
+                        this.pointerDownY
+                    );
+
+
+                /*
+                 * Don't select an object if the
+                 * mouse was being used to orbit/pan.
+                 */
+
+                if (
+                    dx > 5 ||
+                    dy > 5
+                ) {
+
+                    return;
+
+                }
+
+
+                /*
+                 * Right and middle mouse are
+                 * camera controls.
+                 */
+
+                if (
+                    event.button !== 0
+                ) {
+
+                    return;
+
+                }
+
+
+                this.selectAtPointer(
+                    event
+                );
+
+            }
+        );
+
+
+        window.addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    event.key ===
+                    "Escape"
+                ) {
+
+                    this.clear();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    // =====================================================
+    // Convert mouse position to NDC
+    // =====================================================
+
+    updateMouse(
+        event
+    ) {
+
+        const rect =
+            this.canvas.getBoundingClientRect();
+
+
+        this.mouse.x =
+            (
+                (
+                    event.clientX -
+                    rect.left
+                ) /
+                rect.width
+            ) *
+            2 -
+            1;
+
+
+        this.mouse.y =
+            -(
+                (
+                    event.clientY -
+                    rect.top
+                ) /
+                rect.height
+            ) *
+            2 +
+            1;
+
+    }
+
+
+    // =====================================================
+    // Raycast
+    // =====================================================
+
+    raycast(
+        event
+    ) {
+
+        this.updateMouse(
+            event
+        );
+
+
+        this.raycaster.setFromCamera(
+            this.mouse,
+            this.camera
+        );
+
+
+        const objects =
+            this.sceneManager.objects;
+
+
+        const meshes = [];
+
+
+        for (
+            const object
+            of objects
+        ) {
+
+            object.traverse(
+                child => {
+
+                    if (
+                        child.isMesh
+                    ) {
+
+                        meshes.push(
+                            child
+                        );
+
+                    }
+
+                }
+            );
+
+        }
+
+
+        return this.raycaster.intersectObjects(
+            meshes,
+            false
+        );
+
+    }
+
+
+    // =====================================================
+    // Select object at pointer
+    // =====================================================
+
+    selectAtPointer(
+        event
+    ) {
+
+        const hits =
+            this.raycast(
+                event
+            );
+
+
+        if (
+            hits.length === 0
+        ) {
+
+            this.clear();
+
+            return null;
+
+        }
+
+
+        const object =
+            this.findSelectableRoot(
+                hits[0].object
+            );
+
+
+        if (!object) {
+
+            this.clear();
+
+            return null;
+
+        }
+
+
+        this.select(
+            object
+        );
+
+
+        return object;
+
+    }
+
+
+    // =====================================================
+    // Find selectable root
+    // =====================================================
+
+    findSelectableRoot(
+        object
+    ) {
+
+        if (!object)
+            return null;
+
+
+        let current =
+            object;
+
+
+        /*
+         * Walk upward until we find one
+         * of the objects registered with
+         * SceneManager.
+         */
+
+        while (
+            current &&
+            current !== this.sceneManager.scene
+        ) {
+
+            if (
+                this.sceneManager.objects.includes(
+                    current
+                )
+            ) {
+
+                return current;
+
+            }
+
+
+            current =
+                current.parent;
+
+        }
+
+
+        /*
+         * If it isn't registered directly,
+         * return the top-level object.
+         */
+
+        return object;
+
+    }
+
+
+    // =====================================================
+    // Select
+    // =====================================================
 
     select(
         object
@@ -60,33 +369,45 @@ export class SelectionManager {
 
 
         if (
-            !this.sceneManager.objects.includes(
-                object
-            )
+            this.selected ===
+            object
         ) {
+
+            this.updateHighlight();
 
             return;
 
         }
+
+
+        this.previousSelected =
+            this.selected;
+
+
+        this.removeHighlight();
 
 
         this.selected =
             object;
 
 
-        this.notify();
+        this.addHighlight();
+
+
+        this.emitSelectionChanged();
 
     }
 
 
-    // =========================================
+    // =====================================================
     // Clear selection
-    // =========================================
+    // =====================================================
 
     clear() {
 
         if (
-            this.selected === null
+            this.selected ===
+            null
         ) {
 
             return;
@@ -94,18 +415,25 @@ export class SelectionManager {
         }
 
 
+        this.previousSelected =
+            this.selected;
+
+
+        this.removeHighlight();
+
+
         this.selected =
             null;
 
 
-        this.notify();
+        this.emitSelectionChanged();
 
     }
 
 
-    // =========================================
+    // =====================================================
     // Get selected object
-    // =========================================
+    // =====================================================
 
     getSelected() {
 
@@ -114,9 +442,20 @@ export class SelectionManager {
     }
 
 
-    // =========================================
-    // Check selection
-    // =========================================
+    // =====================================================
+    // Get previous selection
+    // =====================================================
+
+    getPreviousSelected() {
+
+        return this.previousSelected;
+
+    }
+
+
+    // =====================================================
+    // Is selected?
+    // =====================================================
 
     isSelected(
         object
@@ -130,65 +469,135 @@ export class SelectionManager {
     }
 
 
-    // =========================================
-    // Add selection listener
-    // =========================================
+    // =====================================================
+    // Highlight
+    // =====================================================
+
+    addHighlight() {
+
+        if (!this.selected)
+            return;
+
+
+        /*
+         * Use a BoxHelper rather than changing
+         * the model's materials.
+         */
+
+        this.highlight =
+            new THREE.BoxHelper(
+                this.selected,
+                0xffff00
+            );
+
+
+        this.highlight.name =
+            "__SFM_SELECTION__";
+
+
+        this.sceneManager.scene.add(
+            this.highlight
+        );
+
+    }
+
+
+    // =====================================================
+    // Remove highlight
+    // =====================================================
+
+    removeHighlight() {
+
+        if (
+            !this.highlight
+        ) {
+
+            return;
+
+        }
+
+
+        this.sceneManager.scene.remove(
+            this.highlight
+        );
+
+
+        this.highlight.geometry.dispose();
+
+
+        if (
+            this.highlight.material
+        ) {
+
+            this.highlight.material.dispose();
+
+        }
+
+
+        this.highlight =
+            null;
+
+    }
+
+
+    // =====================================================
+    // Update highlight
+    // =====================================================
+
+    updateHighlight() {
+
+        if (
+            !this.highlight
+        ) {
+
+            if (
+                this.selected
+            ) {
+
+                this.addHighlight();
+
+            }
+
+            return;
+
+        }
+
+
+        this.highlight.update();
+
+    }
+
+
+    // =====================================================
+    // Selection callback
+    // =====================================================
 
     onSelectionChanged(
         callback
     ) {
 
-        if (
-            typeof callback !==
+        this.onSelectionChangedCallback =
+            typeof callback ===
             "function"
-        ) {
-
-            return () => {};
-
-        }
-
-
-        this.listeners.push(
-            callback
-        );
-
-
-        return () => {
-
-            const index =
-                this.listeners.indexOf(
-                    callback
-                );
-
-            if (
-                index !== -1
-            ) {
-
-                this.listeners.splice(
-                    index,
-                    1
-                );
-
-            }
-
-        };
+                ? callback
+                : null;
 
     }
 
 
-    // =========================================
-    // Notify listeners
-    // =========================================
+    // =====================================================
+    // Emit selection changed
+    // =====================================================
 
-    notify() {
+    emitSelectionChanged() {
 
-        for (
-            const callback
-            of this.listeners
+        if (
+            this.onSelectionChangedCallback
         ) {
 
-            callback(
-                this.selected
+            this.onSelectionChangedCallback(
+                this.selected,
+                this.previousSelected
             );
 
         }
@@ -196,102 +605,21 @@ export class SelectionManager {
     }
 
 
-    // =========================================
-    // Pointer selection
-    // =========================================
+    // =====================================================
+    // Select by UUID
+    // =====================================================
 
-    onPointerDown(
-        event
+    selectByUUID(
+        uuid
     ) {
 
-        if (!this.enabled) {
-
-            return;
-
-        }
-
-
-        // Don't select while using
-        // the middle mouse button.
-
-        if (
-            event.button === 1
-        ) {
-
-            return;
-
-        }
-
-
-        const rect =
-            this.renderer.domElement
-                .getBoundingClientRect();
-
-
-        this.mouse.x =
-            (
-                (event.clientX -
-                    rect.left) /
-                rect.width
-            ) * 2 - 1;
-
-
-        this.mouse.y =
-            -(
-                (event.clientY -
-                    rect.top) /
-                rect.height
-            ) * 2 + 1;
-
-
-        this.raycaster.setFromCamera(
-            this.mouse,
-            this.camera
-        );
-
-
-        const hits =
-            this.raycaster.intersectObjects(
-                this.sceneManager.objects,
-                true
+        const object =
+            this.sceneManager.getObjectByUUID(
+                uuid
             );
 
 
-        if (!hits.length) {
-
-            this.clear();
-
-            return;
-
-        }
-
-
-        let object =
-            hits[0].object;
-
-
-        // Walk up the hierarchy until
-        // we reach an object registered
-        // with SceneManager.
-
-        while (
-            object.parent &&
-            !this.sceneManager.objects.includes(
-                object
-            )
-        ) {
-
-            object =
-                object.parent;
-
-        }
-
-
-        if (
-            this.sceneManager.objects.includes(
-                object
-            )
-        ) {
+        if (object) {
 
             this.select(
                 object
@@ -304,48 +632,82 @@ export class SelectionManager {
 
         }
 
-    }
 
-
-    // =========================================
-    // Enable selection
-    // =========================================
-
-    enable() {
-
-        this.enabled =
-            true;
+        return object;
 
     }
 
 
-    // =========================================
-    // Disable selection
-    // =========================================
+    // =====================================================
+    // Select by name
+    // =====================================================
 
-    disable() {
+    selectByName(
+        name
+    ) {
 
-        this.enabled =
-            false;
+        const object =
+            this.sceneManager.getObjectByName(
+                name
+            );
+
+
+        if (object) {
+
+            this.select(
+                object
+            );
+
+        }
+        else {
+
+            this.clear();
+
+        }
+
+
+        return object;
 
     }
 
 
-    // =========================================
-    // Dispose
-    // =========================================
+    // =====================================================
+    // Refresh
+    // =====================================================
 
-    dispose() {
+    refresh() {
 
-        this.renderer.domElement.removeEventListener(
-            "pointerdown",
-            this.pointerDownHandler
-        );
+        if (
+            this.selected &&
+            !this.sceneManager.objects.includes(
+                this.selected
+            )
+        ) {
+
+            this.clear();
+
+            return;
+
+        }
 
 
-        this.listeners.length = 0;
+        this.updateHighlight();
+
+    }
+
+
+    // =====================================================
+    // Cleanup
+    // =====================================================
+
+    destroy() {
+
+        this.removeHighlight();
 
         this.selected =
+            null;
+
+        this.previousSelected =
             null;
 
     }
