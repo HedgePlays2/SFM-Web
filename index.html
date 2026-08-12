@@ -1,116 +1,183 @@
-```html
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>SFM Web</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <link rel="stylesheet" href="style.css">
+    <title>SFM-Web</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
 </head>
 
 <body>
 
-    <!-- Top Toolbar -->
-    <header class="topbar">
+    <!-- =====================================================
+         TOP BAR
+         ===================================================== -->
 
-        <div class="brand">
-            SFM <span>WEB</span>
+    <header id="topbar">
+
+        <div class="logo">
+            SFM-Web
         </div>
 
-        <button id="newScene">
-            New
-        </button>
+        <div class="menu">
 
-        <button id="saveScene">
-            Save to Puter
-        </button>
+            <button id="newScene">
+                New
+            </button>
 
-        <button id="loadScene">
-            Load from Puter
-        </button>
+            <button id="saveScene">
+                Save
+            </button>
 
-        <label class="upload">
-            Import Model
-            <input
-                id="modelInput"
-                type="file"
-                accept=".glb,.gltf"
-            >
-        </label>
+            <button id="loadScene">
+                Load
+            </button>
 
-        <div class="spacer"></div>
+            <label class="file-button">
 
-        <button id="aiButton">
-            AI Assistant
-        </button>
+                Import Model
+
+                <input
+                    id="modelInput"
+                    type="file"
+                    accept=".glb,.gltf"
+                    hidden
+                >
+
+            </label>
+
+        </div>
 
     </header>
 
 
-    <!-- Main Editor -->
-    <main class="layout">
+    <!-- =====================================================
+         MAIN EDITOR
+         ===================================================== -->
 
-        <!-- Scene / Tools Panel -->
-        <aside class="panel left">
+    <main id="editor">
 
-            <div class="panel-title">
-                SEQUENCE
+        <!-- =================================================
+             LEFT SIDEBAR / OUTLINER
+             ================================================= -->
+
+        <aside id="leftPanel">
+
+            <div class="panel-header">
+                Scene
             </div>
 
             <div id="outliner">
+
                 <!-- Objects appear here -->
-            </div>
-
-
-            <div class="panel-title">
-                TOOLS
-            </div>
-
-            <div class="tool-grid">
-
-                <button data-tool="translate">
-                    Move
-                </button>
-
-                <button data-tool="rotate">
-                    Rotate
-                </button>
-
-                <button data-tool="scale">
-                    Scale
-                </button>
 
             </div>
 
 
-            <button id="addCube" class="wide">
-                + Add Cube
-            </button>
+            <div class="panel-section">
 
-            <button id="addLight" class="wide">
-                + Add Light
-            </button>
+                <div class="panel-header">
+                    Create
+                </div>
+
+                <div class="button-grid">
+
+                    <button id="addCube">
+                        + Cube
+                    </button>
+
+                    <button id="addLight">
+                        + Light
+                    </button>
+
+                </div>
+
+            </div>
 
         </aside>
 
 
-        <!-- 3D Viewport -->
-        <section class="center">
+        <!-- =================================================
+             CENTER VIEWPORT
+             ================================================= -->
 
-            <div id="viewport">
-                <!-- Three.js renders here -->
+        <section id="center">
+
+            <div id="toolbar">
+
+                <button
+                    data-tool="translate"
+                    title="Move"
+                >
+                    Move
+                </button>
+
+                <button
+                    data-tool="rotate"
+                    title="Rotate"
+                >
+                    Rotate
+                </button>
+
+                <button
+                    data-tool="scale"
+                    title="Scale"
+                >
+                    Scale
+                </button>
+
+                <button
+                    id="aiButton"
+                    title="Puter AI"
+                >
+                    AI
+                </button>
+
             </div>
 
-            <div class="hud">
+
+            <div id="viewport">
+
+                <!-- Three.js renderer goes here -->
+
+            </div>
+
+
+            <!-- AI PANEL -->
+
+            <div id="aiPanel">
+
+                <input
+                    id="aiPrompt"
+                    type="text"
+                    placeholder="Ask the AI..."
+                    autocomplete="off"
+                >
+
+                <button id="askAI">
+                    Ask
+                </button>
+
+                <pre id="aiOutput"></pre>
+
+            </div>
+
+
+            <!-- STATUS BAR -->
+
+            <div id="statusbar">
 
                 <span id="status">
-                    Ready
-                </span>
-
-                <span>
-                    WASD: camera • Drag: orbit • Wheel: zoom
+                    Loading SFM-Web...
                 </span>
 
             </div>
@@ -118,78 +185,83 @@
         </section>
 
 
-        <!-- Properties / AI Panel -->
-        <aside class="panel right">
+        <!-- =================================================
+             RIGHT PROPERTIES PANEL
+             ================================================= -->
 
-            <div class="panel-title">
-                PROPERTIES
+        <aside id="rightPanel">
+
+            <div class="panel-header">
+                Properties
             </div>
 
             <div id="properties">
 
-                <div class="empty">
-                    Select an object.
+                <div class="empty-properties">
+                    Select an object
                 </div>
 
             </div>
-
-
-            <div class="panel-title">
-                AI ASSISTANT
-            </div>
-
-            <textarea
-                id="aiPrompt"
-                placeholder="Ask the SFM assistant..."
-            ></textarea>
-
-            <button id="askAI" class="wide">
-                Ask AI
-            </button>
-
-            <pre id="aiOutput"></pre>
 
         </aside>
 
     </main>
 
 
-    <!-- Animation Timeline -->
-    <footer class="timeline">
+    <!-- =====================================================
+         TIMELINE
+         ===================================================== -->
 
-        <div class="transport">
+    <section id="timelinePanel">
+
+        <div class="timeline-controls">
+
+            <button id="stop">
+                ⏹
+            </button>
 
             <button id="play">
                 ▶
             </button>
 
-            <button id="stop">
-                ■
+            <button id="pause">
+                ⏸
             </button>
 
-            <span id="timeLabel">
-                0.0s
-            </span>
+            <button id="addKeyframe">
+                ◆ Add Keyframe
+            </button>
+
+            <button id="deleteKeyframe">
+                ◆ Delete Keyframe
+            </button>
 
         </div>
 
 
-        <div class="track">
+        <div class="timeline-settings">
 
-            <div class="ruler">
+            <label>
+                Duration:
 
-                <span>0s</span>
-                <span>1s</span>
-                <span>2s</span>
-                <span>3s</span>
-                <span>4s</span>
-                <span>5s</span>
-                <span>6s</span>
-                <span>7s</span>
-                <span>8s</span>
-                <span>9s</span>
-                <span>10s</span>
+                <input
+                    id="duration"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value="10"
+                >
 
+                seconds
+            </label>
+
+        </div>
+
+
+        <div class="timeline-main">
+
+            <div class="timeline-label">
+                Time
             </div>
 
             <input
@@ -201,29 +273,30 @@
                 value="0"
             >
 
+            <span id="timeLabel">
+                0.00s
+            </span>
+
         </div>
 
-    </footer>
+    </section>
 
 
-    <!-- Puter.js -->
+    <!-- =====================================================
+         PUTER.JS
+         ===================================================== -->
+
     <script src="https://js.puter.com/v2/"></script>
 
 
-    <!-- Main SFM Web application -->
-    <script type="module" src="app.js"></script>
+    <!-- =====================================================
+         MAIN APP
+         ===================================================== -->
+
+    <script
+        type="module"
+        src="app.js"
+    ></script>
 
 </body>
 </html>
-```
-
-This expects these files beside it:
-
-```text
-SFM-Web/
-├── index.html
-├── style.css
-└── app.js
-```
-
-The **Puter.js line is already included**, so the AI and cloud-save functionality can be connected from `app.js`.
