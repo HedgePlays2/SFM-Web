@@ -7,6 +7,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/
 import { SceneManager } from "./editor/scene.js";
 import { CameraManager } from "./editor/camera.js";
 import { SelectionManager } from "./editor/selection.js";
+import { GizmoManager } from "./editor/gizmos.js";
 
 
 /* =========================================================
@@ -17,6 +18,7 @@ const viewport = document.querySelector("#viewport");
 const status = document.querySelector("#status");
 const outliner = document.querySelector("#outliner");
 const properties = document.querySelector("#properties");
+
 const timeline = document.querySelector("#timeline");
 const timeLabel = document.querySelector("#timeLabel");
 
@@ -25,27 +27,54 @@ const aiOutput = document.querySelector("#aiOutput");
 
 
 /* =========================================================
-   CORE
+   CHECK VIEWPORT
    ========================================================= */
 
 if (!viewport) {
-    throw new Error("Missing #viewport element in index.html");
+    throw new Error(
+        "SFM-Web: #viewport was not found in index.html"
+    );
 }
 
-const sceneManager = new SceneManager(viewport);
 
-const scene = sceneManager.scene;
-const camera = sceneManager.camera;
-const renderer = sceneManager.renderer;
+/* =========================================================
+   CORE SYSTEMS
+   ========================================================= */
 
-const cameraManager = new CameraManager(
-    camera,
-    renderer
-);
+const sceneManager =
+    new SceneManager(viewport);
 
-const selectionManager = new SelectionManager(
-    sceneManager
-);
+const scene =
+    sceneManager.scene;
+
+const camera =
+    sceneManager.camera;
+
+const renderer =
+    sceneManager.renderer;
+
+
+const cameraManager =
+    new CameraManager(
+        camera,
+        renderer
+    );
+
+
+const selectionManager =
+    new SelectionManager(
+        sceneManager
+    );
+
+
+const gizmoManager =
+    new GizmoManager(
+        scene,
+        camera,
+        renderer,
+        cameraManager,
+        selectionManager
+    );
 
 
 /* =========================================================
@@ -78,6 +107,7 @@ selectionManager.onSelectionChanged(
                 "Nothing selected";
 
         }
+
     }
 );
 
@@ -105,11 +135,12 @@ function refreshOutliner() {
         of sceneManager.objects
     ) {
 
-        const row =
+        const item =
             document.createElement("div");
 
-        row.className =
+        item.className =
             "tree-item";
+
 
         if (
             selectionManager.isSelected(
@@ -117,16 +148,18 @@ function refreshOutliner() {
             )
         ) {
 
-            row.classList.add(
+            item.classList.add(
                 "selected"
             );
 
         }
 
-        row.textContent =
+
+        item.textContent =
             object.name;
 
-        row.addEventListener(
+
+        item.addEventListener(
             "click",
             () => {
 
@@ -137,8 +170,9 @@ function refreshOutliner() {
             }
         );
 
+
         outliner.appendChild(
-            row
+            item
         );
     }
 }
@@ -152,6 +186,7 @@ function renderProperties() {
 
     if (!properties)
         return;
+
 
     const selected =
         getSelected();
@@ -280,8 +315,11 @@ function renderProperties() {
         >
             Delete Object
         </button>
+
     `;
 
+
+    /* Position */
 
     bindNumber(
         "#posX",
@@ -304,6 +342,8 @@ function renderProperties() {
         }
     );
 
+
+    /* Rotation */
 
     bindNumber(
         "#rotX",
@@ -342,6 +382,8 @@ function renderProperties() {
     );
 
 
+    /* Scale */
+
     bindNumber(
         "#scaleX",
         value => {
@@ -363,6 +405,8 @@ function renderProperties() {
         }
     );
 
+
+    /* Name */
 
     const nameInput =
         document.querySelector(
@@ -386,6 +430,8 @@ function renderProperties() {
     }
 
 
+    /* Focus */
+
     const focusButton =
         document.querySelector(
             "#focusObject"
@@ -404,6 +450,8 @@ function renderProperties() {
     }
 
 
+    /* Delete */
+
     const deleteButton =
         document.querySelector(
             "#deleteObject"
@@ -413,6 +461,7 @@ function renderProperties() {
 
         deleteButton.onclick =
             deleteSelectedObject;
+
     }
 }
 
@@ -444,28 +493,33 @@ function bindNumber(
                     element.value
                 );
 
+
             if (
                 Number.isFinite(
                     value
                 )
             ) {
 
-                callback(value);
+                callback(
+                    value
+                );
 
             }
+
         }
     );
 }
 
 
 /* =========================================================
-   DELETE
+   DELETE OBJECT
    ========================================================= */
 
 function deleteSelectedObject() {
 
     const selected =
         getSelected();
+
 
     if (!selected)
         return;
@@ -475,7 +529,9 @@ function deleteSelectedObject() {
         selected
     );
 
+
     selectionManager.clear();
+
 
     status.textContent =
         "Object deleted";
@@ -483,7 +539,7 @@ function deleteSelectedObject() {
 
 
 /* =========================================================
-   ESCAPE HTML
+   HTML ESCAPE
    ========================================================= */
 
 function escapeHTML(
@@ -507,6 +563,7 @@ function escapeHTML(
             return entities[
                 character
             ];
+
         }
     );
 }
@@ -521,6 +578,7 @@ const addCube =
         "#addCube"
     );
 
+
 if (addCube) {
 
     addCube.onclick =
@@ -531,12 +589,15 @@ if (addCube) {
                     "Cube"
                 );
 
+
             selectionManager.select(
                 cube
             );
 
+
             status.textContent =
                 "Cube added";
+
         };
 }
 
@@ -550,6 +611,7 @@ const addLight =
         "#addLight"
     );
 
+
 if (addLight) {
 
     addLight.onclick =
@@ -560,18 +622,21 @@ if (addLight) {
                     "Light"
                 );
 
+
             selectionManager.select(
                 light
             );
 
+
             status.textContent =
                 "Light added";
+
         };
 }
 
 
 /* =========================================================
-   TOOLS
+   GIZMO TOOLS
    ========================================================= */
 
 document
@@ -585,17 +650,129 @@ document
                 "click",
                 () => {
 
-                    currentTool =
+                    const tool =
                         button.dataset.tool;
 
+
+                    if (
+                        tool !== "translate" &&
+                        tool !== "rotate" &&
+                        tool !== "scale"
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    currentTool =
+                        tool;
+
+
+                    gizmoManager.setMode(
+                        tool
+                    );
+
+
                     status.textContent =
-                        `Tool: ${currentTool}`;
+                        `Tool: ${tool}`;
 
                 }
             );
 
         }
     );
+
+
+/* =========================================================
+   KEYBOARD GIZMO SHORTCUTS
+   ========================================================= */
+
+window.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.target.tagName ===
+                "INPUT" ||
+            event.target.tagName ===
+                "TEXTAREA"
+        ) {
+
+            return;
+        }
+
+
+        const key =
+            event.key.toLowerCase();
+
+
+        if (key === "w") {
+
+            currentTool =
+                "translate";
+
+            gizmoManager.setMode(
+                "translate"
+            );
+
+            status.textContent =
+                "Tool: translate";
+
+        }
+
+
+        if (key === "e") {
+
+            currentTool =
+                "rotate";
+
+            gizmoManager.setMode(
+                "rotate"
+            );
+
+            status.textContent =
+                "Tool: rotate";
+
+        }
+
+
+        if (key === "r") {
+
+            currentTool =
+                "scale";
+
+            gizmoManager.setMode(
+                "scale"
+            );
+
+            status.textContent =
+                "Tool: scale";
+
+        }
+
+
+        if (key === "f") {
+
+            const selected =
+                getSelected();
+
+
+            if (selected) {
+
+                cameraManager.focusObject(
+                    selected
+                );
+
+                status.textContent =
+                    "Camera focused";
+
+            }
+
+        }
+
+    }
+);
 
 
 /* =========================================================
@@ -607,6 +784,7 @@ const newScene =
         "#newScene"
     );
 
+
 if (newScene) {
 
     newScene.onclick =
@@ -616,13 +794,20 @@ if (newScene) {
 
             selectionManager.clear();
 
+            cameraManager.reset();
+
             currentTime = 0;
 
             playing = false;
 
+
             if (timeline) {
-                timeline.value = 0;
+
+                timeline.value =
+                    0;
+
             }
+
 
             if (timeLabel) {
 
@@ -631,14 +816,15 @@ if (newScene) {
 
             }
 
-            cameraManager.reset();
 
             refreshOutliner();
 
             renderProperties();
 
+
             status.textContent =
                 "New scene";
+
         };
 }
 
@@ -652,6 +838,7 @@ const modelInput =
         "#modelInput"
     );
 
+
 if (modelInput) {
 
     modelInput.addEventListener(
@@ -660,6 +847,7 @@ if (modelInput) {
 
             const file =
                 event.target.files[0];
+
 
             if (!file)
                 return;
@@ -751,15 +939,19 @@ if (modelInput) {
                         error
                     );
 
+
                     status.textContent =
                         "Model import failed";
+
 
                     URL.revokeObjectURL(
                         url
                     );
 
                 }
+
             );
+
         }
     );
 }
@@ -780,6 +972,7 @@ if (timeline) {
                     timeline.value
                 );
 
+
             if (timeLabel) {
 
                 timeLabel.textContent =
@@ -787,6 +980,7 @@ if (timeline) {
                     "s";
 
             }
+
         }
     );
 }
@@ -801,6 +995,7 @@ const play =
         "#play"
     );
 
+
 if (play) {
 
     play.onclick =
@@ -812,6 +1007,7 @@ if (play) {
                 "Playing";
 
         };
+
 }
 
 
@@ -824,6 +1020,7 @@ const stop =
         "#stop"
     );
 
+
 if (stop) {
 
     stop.onclick =
@@ -833,9 +1030,14 @@ if (stop) {
 
             currentTime = 0;
 
+
             if (timeline) {
-                timeline.value = 0;
+
+                timeline.value =
+                    0;
+
             }
+
 
             if (timeLabel) {
 
@@ -844,52 +1046,13 @@ if (stop) {
 
             }
 
+
             status.textContent =
                 "Stopped";
 
         };
+
 }
-
-
-/* =========================================================
-   CAMERA FOCUS
-   ========================================================= */
-
-window.addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            event.target.tagName ===
-                "INPUT" ||
-            event.target.tagName ===
-                "TEXTAREA"
-        ) {
-
-            return;
-        }
-
-
-        if (
-            event.key.toLowerCase() ===
-            "f"
-        ) {
-
-            const selected =
-                getSelected();
-
-            if (selected) {
-
-                cameraManager.focusObject(
-                    selected
-                );
-
-                status.textContent =
-                    "Camera focused";
-            }
-        }
-    }
-);
 
 
 /* =========================================================
@@ -900,6 +1063,7 @@ const saveScene =
     document.querySelector(
         "#saveScene"
     );
+
 
 if (saveScene) {
 
@@ -932,11 +1096,14 @@ if (saveScene) {
                     error
                 );
 
+
                 status.textContent =
                     "Save failed";
 
             }
+
         };
+
 }
 
 
@@ -948,6 +1115,7 @@ const loadScene =
     document.querySelector(
         "#loadScene"
     );
+
 
 if (loadScene) {
 
@@ -987,16 +1155,19 @@ if (loadScene) {
                     error
                 );
 
+
                 status.textContent =
                     "Could not load project";
 
             }
+
         };
+
 }
 
 
 /* =========================================================
-   SERIALIZE SCENE
+   SERIALIZE
    ========================================================= */
 
 function serializeScene() {
@@ -1034,12 +1205,13 @@ function serializeScene() {
 
                 })
             )
+
     };
 }
 
 
 /* =========================================================
-   RESTORE SCENE
+   RESTORE
    ========================================================= */
 
 function restoreScene(
@@ -1116,6 +1288,7 @@ function restoreScene(
             }
 
         }
+
     }
 
 
@@ -1133,6 +1306,7 @@ const askAI =
     document.querySelector(
         "#askAI"
     );
+
 
 if (
     askAI &&
@@ -1182,6 +1356,7 @@ ${prompt}`,
                             model:
                                 "gpt-5.4-nano"
                         }
+
                     );
 
 
@@ -1197,12 +1372,15 @@ ${prompt}`,
                     error
                 );
 
+
                 aiOutput.textContent =
                     "AI error: " +
                     error.message;
 
             }
+
         };
+
 }
 
 
@@ -1215,6 +1393,7 @@ const aiButton =
         "#aiButton"
     );
 
+
 if (aiButton) {
 
     aiButton.onclick =
@@ -1225,8 +1404,27 @@ if (aiButton) {
                 aiPrompt.focus();
 
             }
+
         };
+
 }
+
+
+/* =========================================================
+   GIZMO CHANGE CALLBACK
+   ========================================================= */
+
+gizmoManager.setObjectChangedCallback(
+    object => {
+
+        if (!object)
+            return;
+
+
+        renderProperties();
+
+    }
+);
 
 
 /* =========================================================
@@ -1247,7 +1445,8 @@ function animate(
 
 
     const delta =
-        (now - lastTime) / 1000;
+        (now - lastTime) /
+        1000;
 
 
     lastTime =
@@ -1291,12 +1490,14 @@ function animate(
                 "s";
 
         }
+
     }
 
 
     cameraManager.update();
 
     sceneManager.render();
+
 }
 
 
