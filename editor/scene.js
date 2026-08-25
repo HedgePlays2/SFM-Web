@@ -1,44 +1,83 @@
-// editor/scene.js
-// SFM-Web Scene Manager
+// ============================================================
+// SFM-WEB
+// 3D Scene Manager
+// ============================================================
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
 
 export class SceneManager {
 
-    constructor(
-        viewport
-    ) {
+    constructor(viewport) {
 
         this.viewport =
             viewport;
 
-        this.objects =
-            [];
+        if (!this.viewport) {
+
+            throw new Error(
+                "SceneManager: viewport was not found."
+            );
+
+        }
+
+
+        // =====================================================
+        // Object collection
+        // =====================================================
+
+        this.objects = [];
+
+
+        // =====================================================
+        // Scene
+        // =====================================================
 
         this.scene =
             new THREE.Scene();
 
 
-        // =================================================
-        // Scene appearance
-        // =================================================
-
         this.scene.background =
             new THREE.Color(
-                0x111315
+                0x17191d
             );
 
 
-        // =================================================
+        // =====================================================
+        // Camera
+        // =====================================================
+
+        this.camera =
+            new THREE.PerspectiveCamera(
+                60,
+                1,
+                0.01,
+                5000
+            );
+
+
+        this.camera.position.set(
+            8,
+            6,
+            8
+        );
+
+
+        this.camera.lookAt(
+            0,
+            0,
+            0
+        );
+
+
+        // =====================================================
         // Renderer
-        // =================================================
+        // =====================================================
 
         this.renderer =
             new THREE.WebGLRenderer({
-
-                antialias: true
-
+                antialias: true,
+                alpha: false
             });
 
 
@@ -51,8 +90,9 @@ export class SceneManager {
 
 
         this.renderer.setSize(
-            viewport.clientWidth,
-            viewport.clientHeight
+            this.viewport.clientWidth || 800,
+            this.viewport.clientHeight || 500,
+            false
         );
 
 
@@ -64,88 +104,74 @@ export class SceneManager {
             THREE.PCFSoftShadowMap;
 
 
-        viewport.appendChild(
+        this.renderer.outputColorSpace =
+            THREE.SRGBColorSpace;
+
+
+        this.renderer.toneMapping =
+            THREE.ACESFilmicToneMapping;
+
+
+        this.renderer.toneMappingExposure =
+            1;
+
+
+        this.renderer.domElement.id =
+            "sfmCanvas";
+
+
+        this.renderer.domElement.style.display =
+            "block";
+
+
+        this.renderer.domElement.style.width =
+            "100%";
+
+
+        this.renderer.domElement.style.height =
+            "100%";
+
+
+        this.renderer.domElement.style.touchAction =
+            "none";
+
+
+        this.viewport.appendChild(
             this.renderer.domElement
         );
 
 
-        // =================================================
-        // Camera
-        // =================================================
+        // =====================================================
+        // Environment
+        // =====================================================
 
-        this.camera =
-            new THREE.PerspectiveCamera(
-
-                60,
-
-                viewport.clientWidth /
-                Math.max(
-                    viewport.clientHeight,
-                    1
-                ),
-
-                0.1,
-
-                5000
-
-            );
+        this.createWorld();
 
 
-        this.camera.position.set(
-            8,
-            6,
-            10
-        );
+        // =====================================================
+        // Grid
+        // =====================================================
+
+        this.createGrid();
 
 
-        this.camera.lookAt(
-            0,
-            0,
-            0
-        );
+        // =====================================================
+        // Axes
+        // =====================================================
+
+        this.createAxes();
 
 
-        // =================================================
-        // Lighting
-        // =================================================
+        // =====================================================
+        // Default lighting
+        // =====================================================
 
         this.createDefaultLights();
 
 
-        // =================================================
-        // Grid
-        // =================================================
-
-        this.grid =
-            new THREE.GridHelper(
-                100,
-                100
-            );
-
-
-        this.scene.add(
-            this.grid
-        );
-
-
-        // =================================================
-        // Axis helper
-        // =================================================
-
-        this.axes =
-            new THREE.AxesHelper(
-                5
-            );
-
-
-        this.scene.add(
-            this.axes
-        );
-
-
-        // =================================================
+        // =====================================================
         // Resize
-        // =================================================
+        // =====================================================
 
         this.resizeObserver =
             new ResizeObserver(
@@ -158,87 +184,269 @@ export class SceneManager {
 
 
         this.resizeObserver.observe(
-            viewport
+            this.viewport
+        );
+
+
+        window.addEventListener(
+            "resize",
+            () => {
+
+                this.resize();
+
+            }
+        );
+
+
+        this.resize();
+
+    }
+
+
+    // =========================================================
+    // World
+    // =========================================================
+
+    createWorld() {
+
+        /*
+         * A large plane gives the editor a visible floor.
+         */
+
+        const floorGeometry =
+            new THREE.PlaneGeometry(
+                2000,
+                2000
+            );
+
+
+        const floorMaterial =
+            new THREE.MeshStandardMaterial({
+
+                color:
+                    0x202329,
+
+                roughness:
+                    0.9,
+
+                metalness:
+                    0.05
+
+            });
+
+
+        this.floor =
+            new THREE.Mesh(
+                floorGeometry,
+                floorMaterial
+            );
+
+
+        this.floor.rotation.x =
+            -Math.PI / 2;
+
+
+        this.floor.position.y =
+            0;
+
+
+        this.floor.receiveShadow =
+            true;
+
+
+        this.floor.name =
+            "__SFM_FLOOR__";
+
+
+        this.scene.add(
+            this.floor
         );
 
     }
 
 
-    // =====================================================
-    // Default lights
-    // =====================================================
+    // =========================================================
+    // Grid
+    // =========================================================
 
-    createDefaultLights() {
+    createGrid() {
 
-        const ambient =
-            new THREE.HemisphereLight(
-
-                0xffffff,
-                0x333333,
-                2
-
+        this.grid =
+            new THREE.GridHelper(
+                200,
+                200,
+                0x555b66,
+                0x30343b
             );
 
 
-        ambient.name =
-            "Ambient Light";
+        this.grid.position.y =
+            0.002;
+
+
+        this.grid.name =
+            "__SFM_GRID__";
 
 
         this.scene.add(
-            ambient
+            this.grid
         );
 
+    }
 
-        const key =
-            new THREE.DirectionalLight(
 
-                0xffffff,
+    // =========================================================
+    // Axes
+    // =========================================================
+
+    createAxes() {
+
+        this.axes =
+            new THREE.AxesHelper(
                 3
-
             );
 
 
-        key.name =
-            "Key Light";
+        this.axes.position.set(
+            0,
+            0.01,
+            0
+        );
 
 
-        key.position.set(
+        this.axes.name =
+            "__SFM_AXES__";
+
+
+        this.scene.add(
+            this.axes
+        );
+
+    }
+
+
+    // =========================================================
+    // Default lights
+    // =========================================================
+
+    createDefaultLights() {
+
+        // -----------------------------------------------------
+        // Ambient
+        // -----------------------------------------------------
+
+        this.ambientLight =
+            new THREE.HemisphereLight(
+                0xffffff,
+                0x444444,
+                1.5
+            );
+
+
+        this.ambientLight.name =
+            "__SFM_AMBIENT__";
+
+
+        this.scene.add(
+            this.ambientLight
+        );
+
+
+        // -----------------------------------------------------
+        // Main directional light
+        // -----------------------------------------------------
+
+        this.mainLight =
+            new THREE.DirectionalLight(
+                0xffffff,
+                3
+            );
+
+
+        this.mainLight.position.set(
             5,
             10,
             5
         );
 
 
-        key.castShadow =
+        this.mainLight.castShadow =
             true;
 
 
-        key.shadow.mapSize.width =
+        this.mainLight.shadow.mapSize.width =
             2048;
 
 
-        key.shadow.mapSize.height =
+        this.mainLight.shadow.mapSize.height =
             2048;
 
 
-        key.shadow.camera.near =
+        this.mainLight.shadow.camera.near =
             0.1;
 
 
-        key.shadow.camera.far =
+        this.mainLight.shadow.camera.far =
             100;
 
 
+        this.mainLight.shadow.camera.left =
+            -30;
+
+
+        this.mainLight.shadow.camera.right =
+            30;
+
+
+        this.mainLight.shadow.camera.top =
+            30;
+
+
+        this.mainLight.shadow.camera.bottom =
+            -30;
+
+
+        this.mainLight.name =
+            "__SFM_MAIN_LIGHT__";
+
+
         this.scene.add(
-            key
+            this.mainLight
+        );
+
+
+        // -----------------------------------------------------
+        // Fill light
+        // -----------------------------------------------------
+
+        this.fillLight =
+            new THREE.DirectionalLight(
+                0x8899ff,
+                0.7
+            );
+
+
+        this.fillLight.position.set(
+            -5,
+            5,
+            -5
+        );
+
+
+        this.fillLight.name =
+            "__SFM_FILL_LIGHT__";
+
+
+        this.scene.add(
+            this.fillLight
         );
 
     }
 
 
-    // =====================================================
+    // =========================================================
     // Create cube
-    // =====================================================
+    // =========================================================
 
     createCube(
         name = "Cube"
@@ -255,11 +463,14 @@ export class SceneManager {
         const material =
             new THREE.MeshStandardMaterial({
 
-                color: 0x6688cc,
+                color:
+                    0x4d8cff,
 
-                roughness: 0.65,
+                roughness:
+                    0.55,
 
-                metalness: 0.05
+                metalness:
+                    0.05
 
             });
 
@@ -283,6 +494,10 @@ export class SceneManager {
             true;
 
 
+        cube.position.y =
+            0.5;
+
+
         this.addObject(
             cube
         );
@@ -293,9 +508,9 @@ export class SceneManager {
     }
 
 
-    // =====================================================
+    // =========================================================
     // Create sphere
-    // =====================================================
+    // =========================================================
 
     createSphere(
         name = "Sphere"
@@ -303,7 +518,7 @@ export class SceneManager {
 
         const geometry =
             new THREE.SphereGeometry(
-                0.75,
+                0.6,
                 32,
                 20
             );
@@ -312,9 +527,14 @@ export class SceneManager {
         const material =
             new THREE.MeshStandardMaterial({
 
-                color: 0xcc8866,
+                color:
+                    0xff5577,
 
-                roughness: 0.6
+                roughness:
+                    0.45,
+
+                metalness:
+                    0.05
 
             });
 
@@ -338,6 +558,10 @@ export class SceneManager {
             true;
 
 
+        sphere.position.y =
+            0.6;
+
+
         this.addObject(
             sphere
         );
@@ -348,9 +572,9 @@ export class SceneManager {
     }
 
 
-    // =====================================================
+    // =========================================================
     // Create light
-    // =====================================================
+    // =========================================================
 
     createLight(
         name = "Light"
@@ -358,13 +582,9 @@ export class SceneManager {
 
         const light =
             new THREE.PointLight(
-
                 0xffffff,
-
-                50,
-
-                50
-
+                10,
+                25
             );
 
 
@@ -383,14 +603,17 @@ export class SceneManager {
             true;
 
 
-        this.addObject(
-            light
-        );
+        light.shadow.mapSize.width =
+            1024;
+
+
+        light.shadow.mapSize.height =
+            1024;
 
 
         /*
-         * Add a visible helper so the
-         * light can be seen in the editor.
+         * Create a visible helper so the light
+         * can be selected in the editor.
          */
 
         const helper =
@@ -401,15 +624,16 @@ export class SceneManager {
 
 
         helper.name =
-            `${name}_Helper`;
+            "__SFM_LIGHT_HELPER__";
 
 
-        light.userData.helper =
-            helper;
-
-
-        this.scene.add(
+        light.add(
             helper
+        );
+
+
+        this.addObject(
+            light
         );
 
 
@@ -418,30 +642,39 @@ export class SceneManager {
     }
 
 
-    // =====================================================
-    // Add existing object
-    // =====================================================
+    // =========================================================
+    // Add arbitrary object
+    // =========================================================
 
     addObject(
-        object,
-        name = null
+        object
     ) {
 
-        if (!object)
+        if (!object) {
+
             return null;
-
-
-        if (name) {
-
-            object.name =
-                name;
 
         }
 
 
-        this.scene.add(
-            object
-        );
+        /*
+         * Don't add editor-only objects to the
+         * user object collection.
+         */
+
+        if (
+            object.name?.startsWith(
+                "__SFM_"
+            )
+        ) {
+
+            this.scene.add(
+                object
+            );
+
+            return object;
+
+        }
 
 
         if (
@@ -457,21 +690,29 @@ export class SceneManager {
         }
 
 
+        this.scene.add(
+            object
+        );
+
+
         return object;
 
     }
 
 
-    // =====================================================
+    // =========================================================
     // Remove object
-    // =====================================================
+    // =========================================================
 
     removeObject(
         object
     ) {
 
-        if (!object)
+        if (!object) {
+
             return;
+
+        }
 
 
         const index =
@@ -492,23 +733,6 @@ export class SceneManager {
         }
 
 
-        /*
-         * Remove helper if this
-         * object owns one.
-         */
-
-        if (
-            object.userData &&
-            object.userData.helper
-        ) {
-
-            this.scene.remove(
-                object.userData.helper
-            );
-
-        }
-
-
         this.scene.remove(
             object
         );
@@ -521,16 +745,19 @@ export class SceneManager {
     }
 
 
-    // =====================================================
-    // Dispose object resources
-    // =====================================================
+    // =========================================================
+    // Dispose object
+    // =========================================================
 
     disposeObject(
         object
     ) {
 
-        if (!object)
+        if (!object) {
+
             return;
+
+        }
 
 
         object.traverse(
@@ -549,25 +776,58 @@ export class SceneManager {
                     child.material
                 ) {
 
-                    if (
+                    const materials =
                         Array.isArray(
                             child.material
                         )
+                            ? child.material
+                            : [
+                                child.material
+                            ];
+
+
+                    for (
+                        const material
+                        of materials
                     ) {
 
-                        child.material.forEach(
-                            material =>
-                                this.disposeMaterial(
-                                    material
-                                )
-                        );
+                        if (
+                            material.map
+                        ) {
 
-                    }
-                    else {
+                            material.map.dispose();
 
-                        this.disposeMaterial(
-                            child.material
-                        );
+                        }
+
+
+                        if (
+                            material.normalMap
+                        ) {
+
+                            material.normalMap.dispose();
+
+                        }
+
+
+                        if (
+                            material.roughnessMap
+                        ) {
+
+                            material.roughnessMap.dispose();
+
+                        }
+
+
+                        if (
+                            material.metalnessMap
+                        ) {
+
+                            material.metalnessMap.dispose();
+
+                        }
+
+
+                        material.dispose();
 
                     }
 
@@ -579,49 +839,9 @@ export class SceneManager {
     }
 
 
-    // =====================================================
-    // Dispose material
-    // =====================================================
-
-    disposeMaterial(
-        material
-    ) {
-
-        if (!material)
-            return;
-
-
-        for (
-            const key
-            of Object.keys(
-                material
-            )
-        ) {
-
-            const value =
-                material[key];
-
-
-            if (
-                value &&
-                value.isTexture
-            ) {
-
-                value.dispose();
-
-            }
-
-        }
-
-
-        material.dispose();
-
-    }
-
-
-    // =====================================================
-    // Clear objects
-    // =====================================================
+    // =========================================================
+    // Clear user objects
+    // =========================================================
 
     clearObjects() {
 
@@ -640,80 +860,104 @@ export class SceneManager {
 
         }
 
+
+        this.objects =
+            [];
+
     }
 
 
-    // =====================================================
+    // =========================================================
     // Find object by UUID
-    // =====================================================
+    // =========================================================
 
     getObjectByUUID(
         uuid
     ) {
 
-        return this.objects.find(
-            object =>
-                object.uuid ===
-                uuid
-        ) || null;
+        for (
+            const object
+            of this.objects
+        ) {
+
+            const found =
+                object.getObjectByProperty(
+                    "uuid",
+                    uuid
+                );
+
+
+            if (found) {
+
+                return found;
+
+            }
+
+        }
+
+
+        return null;
 
     }
 
 
-    // =====================================================
+    // =========================================================
     // Find object by name
-    // =====================================================
+    // =========================================================
 
     getObjectByName(
         name
     ) {
 
-        return this.objects.find(
-            object =>
+        for (
+            const object
+            of this.objects
+        ) {
+
+            if (
                 object.name ===
                 name
-        ) || null;
+            ) {
+
+                return object;
+
+            }
+
+        }
+
+
+        return null;
 
     }
 
 
-    // =====================================================
-    // Get all objects
-    // =====================================================
-
-    getObjects() {
-
-        return this.objects;
-
-    }
-
-
-    // =====================================================
-    // Resize renderer
-    // =====================================================
+    // =========================================================
+    // Resize
+    // =========================================================
 
     resize() {
 
-        if (!this.viewport)
-            return;
-
-
         const width =
-            Math.max(
-                this.viewport.clientWidth,
-                1
-            );
+            this.viewport.clientWidth;
 
 
         const height =
-            Math.max(
-                this.viewport.clientHeight,
-                1
-            );
+            this.viewport.clientHeight;
+
+
+        if (
+            width <= 0 ||
+            height <= 0
+        ) {
+
+            return;
+
+        }
 
 
         this.camera.aspect =
-            width / height;
+            width /
+            height;
 
 
         this.camera.updateProjectionMatrix();
@@ -728,9 +972,9 @@ export class SceneManager {
     }
 
 
-    // =====================================================
+    // =========================================================
     // Render
-    // =====================================================
+    // =========================================================
 
     render() {
 
@@ -742,9 +986,9 @@ export class SceneManager {
     }
 
 
-    // =====================================================
+    // =========================================================
     // Get scene
-    // =====================================================
+    // =========================================================
 
     getScene() {
 
@@ -753,9 +997,9 @@ export class SceneManager {
     }
 
 
-    // =====================================================
+    // =========================================================
     // Get camera
-    // =====================================================
+    // =========================================================
 
     getCamera() {
 
@@ -764,43 +1008,22 @@ export class SceneManager {
     }
 
 
-    // =====================================================
-    // Set grid visibility
-    // =====================================================
+    // =========================================================
+    // Get renderer
+    // =========================================================
 
-    setGridVisible(
-        visible
-    ) {
+    getRenderer() {
 
-        this.grid.visible =
-            Boolean(
-                visible
-            );
+        return this.renderer;
 
     }
 
 
-    // =====================================================
-    // Set axes visibility
-    // =====================================================
-
-    setAxesVisible(
-        visible
-    ) {
-
-        this.axes.visible =
-            Boolean(
-                visible
-            );
-
-    }
-
-
-    // =====================================================
+    // =========================================================
     // Cleanup
-    // =====================================================
+    // =========================================================
 
-    destroy() {
+    dispose() {
 
         this.clearObjects();
 
@@ -814,14 +1037,50 @@ export class SceneManager {
         }
 
 
-        this.renderer.dispose();
+        window.removeEventListener(
+            "resize",
+            () => this.resize()
+        );
 
 
         if (
-            this.renderer.domElement.parentNode
+            this.renderer
         ) {
 
-            this.renderer.domElement.parentNode.removeChild(
+            this.renderer.dispose();
+
+        }
+
+
+        if (
+            this.floor
+        ) {
+
+            this.floor.geometry.dispose();
+
+            this.floor.material.dispose();
+
+        }
+
+
+        if (
+            this.grid
+        ) {
+
+            this.grid.geometry.dispose();
+
+            this.grid.material.dispose();
+
+        }
+
+
+        if (
+            this.viewport &&
+            this.renderer.domElement.parentElement ===
+            this.viewport
+        ) {
+
+            this.viewport.removeChild(
                 this.renderer.domElement
             );
 
