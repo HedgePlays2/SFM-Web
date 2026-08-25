@@ -12,23 +12,52 @@
 
     <meta
         name="description"
-        content="SFM-Web - A browser-based Source Filmmaker style editor"
+        content="SFM-Web - Browser based 3D animation editor"
     >
 
     <title>SFM-Web</title>
 
-    <!-- Website icon -->
+
+    <!-- ================================================ -->
+    <!-- ICON -->
+    <!-- ================================================ -->
+
     <link
         rel="icon"
         type="image/png"
         href="icon.png"
     >
 
-    <!-- Main stylesheet -->
+
+    <!-- ================================================ -->
+    <!-- STYLE -->
+    <!-- ================================================ -->
+
     <link
         rel="stylesheet"
         href="style.css"
     >
+
+
+    <!-- ================================================ -->
+    <!-- THREE.JS IMPORT MAP -->
+    <!-- ================================================ -->
+
+    <script type="importmap">
+
+    {
+        "imports": {
+
+            "three":
+                "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js",
+
+            "three/addons/":
+                "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"
+
+        }
+    }
+
+    </script>
 
 </head>
 
@@ -36,9 +65,9 @@
 <body>
 
 
-<!-- ===================================================== -->
-<!-- APPLICATION -->
-<!-- ===================================================== -->
+<!-- ==================================================== -->
+<!-- SFM APPLICATION -->
+<!-- ==================================================== -->
 
 <div id="app">
 
@@ -49,12 +78,13 @@
 
     <header id="topbar">
 
+
         <div id="brand">
 
             <img
                 src="icon.png"
-                alt="SFM-Web"
                 id="appIcon"
+                alt="SFM-Web"
             >
 
             <span>
@@ -66,17 +96,21 @@
 
         <div id="menu">
 
+
             <button id="newScene">
                 New
             </button>
+
 
             <button id="saveScene">
                 Save
             </button>
 
+
             <button id="loadScene">
                 Load
             </button>
+
 
             <label
                 class="file-button"
@@ -85,6 +119,7 @@
                 Import Model
             </label>
 
+
             <input
                 id="modelFile"
                 type="file"
@@ -92,7 +127,9 @@
                 hidden
             >
 
+
         </div>
+
 
     </header>
 
@@ -111,6 +148,7 @@
 
         <aside id="leftPanel">
 
+
             <div class="panel-header">
                 Scene
             </div>
@@ -120,9 +158,6 @@
                 id="outliner"
                 class="panel-section"
             >
-
-                <!-- Objects are added here by app.js -->
-
             </div>
 
 
@@ -133,17 +168,21 @@
 
             <div class="button-grid">
 
+
                 <button id="addCube">
                     Cube
                 </button>
+
 
                 <button id="addSphere">
                     Sphere
                 </button>
 
+
                 <button id="addLight">
                     Light
                 </button>
+
 
             </div>
 
@@ -155,23 +194,29 @@
 
             <div class="button-grid">
 
+
                 <button id="focusObject">
                     Focus
                 </button>
+
 
                 <button id="deleteObject">
                     Delete
                 </button>
 
+
                 <button id="resetCamera">
                     Reset Camera
                 </button>
+
 
                 <button id="clearScene">
                     Clear Scene
                 </button>
 
+
             </div>
+
 
         </aside>
 
@@ -190,12 +235,14 @@
 
             <div id="toolbar">
 
+
                 <button
                     id="moveTool"
                     title="Move (W)"
                 >
                     Move
                 </button>
+
 
                 <button
                     id="rotateTool"
@@ -204,6 +251,7 @@
                     Rotate
                 </button>
 
+
                 <button
                     id="scaleTool"
                     title="Scale (R)"
@@ -211,17 +259,19 @@
                     Scale
                 </button>
 
+
             </div>
 
 
+
             <!-- ========================================= -->
-            <!-- VIEWPORT -->
+            <!-- 3D VIEWPORT -->
             <!-- ========================================= -->
 
             <div id="viewport">
 
 
-                <!-- Three.js renderer goes here -->
+                <!-- Three.js canvas is inserted here -->
 
 
                 <!-- ===================================== -->
@@ -230,12 +280,14 @@
 
                 <div id="aiPanel">
 
+
                     <div class="ai-title">
                         SFM AI
                     </div>
 
 
                     <div class="ai-input-row">
+
 
                         <input
                             id="aiPrompt"
@@ -244,16 +296,18 @@
                             autocomplete="off"
                         >
 
+
                         <button id="aiSend">
                             Send
                         </button>
+
 
                     </div>
 
 
                     <div id="aiOutput">
-
                     </div>
+
 
                 </div>
 
@@ -261,17 +315,21 @@
             </div>
 
 
+
             <!-- ========================================= -->
-            <!-- STATUS -->
+            <!-- STATUS BAR -->
             <!-- ========================================= -->
 
             <div id="statusbar">
+
 
                 <span id="status">
                     Loading SFM-Web...
                 </span>
 
+
             </div>
+
 
         </section>
 
@@ -291,11 +349,14 @@
 
             <div id="properties">
 
+
                 <div class="empty-properties">
                     Select an object
                 </div>
 
+
             </div>
+
 
         </aside>
 
@@ -312,14 +373,15 @@
 
 
         <!-- ============================================= -->
-        <!-- Timeline controls -->
+        <!-- CONTROLS -->
         <!-- ============================================= -->
 
         <div id="timelineControls">
 
+
             <button
                 id="timelineStart"
-                title="Go to beginning"
+                title="Beginning"
             >
                 |◀
             </button>
@@ -351,7 +413,7 @@
 
             <button
                 id="timelineEnd"
-                title="Go to end"
+                title="End"
             >
                 ▶|
             </button>
@@ -366,15 +428,17 @@
                 ◆ Delete Keyframe
             </button>
 
+
         </div>
 
 
 
         <!-- ============================================= -->
-        <!-- Timeline settings -->
+        <!-- SETTINGS -->
         <!-- ============================================= -->
 
         <div id="timelineSettings">
+
 
             <label for="duration">
                 Duration:
@@ -395,12 +459,13 @@
                 seconds
             </span>
 
+
         </div>
 
 
 
         <!-- ============================================= -->
-        <!-- Timeline -->
+        <!-- TIME SLIDER -->
         <!-- ============================================= -->
 
         <div id="timelineMain">
@@ -425,34 +490,33 @@
                 0.00s
             </div>
 
+
         </div>
 
 
+
         <!-- ============================================= -->
-        <!-- Timeline tracks -->
+        <!-- TRACKS -->
         <!-- ============================================= -->
 
         <div id="timelineTracks">
-
-            <!-- Animation tracks will be added here -->
-
         </div>
 
-    </section>
 
+    </section>
 
 
 </div>
 
 
 
-<!-- ===================================================== -->
-<!-- MAIN APPLICATION -->
-<!-- ===================================================== -->
+<!-- ==================================================== -->
+<!-- START SFM-WEB -->
+<!-- ==================================================== -->
 
 <script
     type="module"
-    src="app.js"
+    src="./app.js"
 ></script>
 
 
